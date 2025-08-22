@@ -24,8 +24,8 @@ import random
 import weakref
 from functools import cached_property
 
-from pyeda.boolalg import boolfunc
-from pyeda.boolalg.expr import And, Or, exprvar
+from . import boolfunc
+from .expr import And, Or, exprvar
 
 # existing BDDVariable references
 _VARS = {}

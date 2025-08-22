@@ -101,12 +101,12 @@ import random
 
 from functools import cached_property
 
-from ..parsing.boolexpr import parse
+from .parsing.boolexpr import parse
 
 from boolexpr import exprnode
 
 from . import boolfunc
-from ..util import bit_on, clog2
+from .util import bit_on, clog2
 
 
 # existing Literal references

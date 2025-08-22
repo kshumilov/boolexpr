@@ -59,7 +59,7 @@ import threading
 
 from functools import cached_property
 
-from ..util import bit_on
+from .util import bit_on
 
 VARIABLES = {}
 
