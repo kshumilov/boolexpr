@@ -1,0 +1,18 @@
+[project]
+name = "boolexpr"
+version = "0.1.0"
+description = "python binding for @cjdrake C BoolExpr library found in PyEDA"
+readme = "README.md"
+authors = [
+    { name = "Kirill Shumilov", email = "shumilov.kirill98@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11"]
+build-backend = "scikit_build_core.build"
