@@ -3,10 +3,8 @@ project(${SKBUILD_PROJECT_NAME} LANGUAGES C)
 
 find_package(
   Python
-  COMPONENTS Development.Module
+  COMPONENTS Interpreter Development.Module
   REQUIRED
 )
 
-python_add_library(core MODULE src/main.c WITH_SOABI)
-
-install(TARGETS core DESTINATION ${SKBUILD_PROJECT_NAME})
+add_subdirectory(src)
