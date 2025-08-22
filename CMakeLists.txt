@@ -1,8 +1,12 @@
-cmake_minimum_required(VERSION 3.15)
-project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.15...3.31)
+project(${SKBUILD_PROJECT_NAME} LANGUAGES C)
 
-set(PYBIND11_FINDPYTHON ON)
-find_package(pybind11 CONFIG REQUIRED)
+find_package(
+  Python
+  COMPONENTS Development.Module
+  REQUIRED
+)
 
-pybind11_add_module(_core MODULE src/main.cpp)
-install(TARGETS _core DESTINATION ${SKBUILD_PROJECT_NAME})
+python_add_library(core MODULE src/main.c WITH_SOABI)
+
+install(TARGETS core DESTINATION ${SKBUILD_PROJECT_NAME})
