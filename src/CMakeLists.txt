@@ -1,11 +1,11 @@
 python_add_library(
-  core MODULE
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+  exprnode MODULE
+  ${CMAKE_CURRENT_SOURCE_DIR}/exprnodemodule.c
   WITH_SOABI
 )
 
-add_subdirectory(core)
+add_subdirectory(exprnode)
 
-target_link_libraries(core PRIVATE boolexpr)
+target_link_libraries(exprnode PRIVATE boolexpr)
 
-install(TARGETS core DESTINATION ${SKBUILD_PROJECT_NAME})
+install(TARGETS exprnode DESTINATION ${SKBUILD_PROJECT_NAME})

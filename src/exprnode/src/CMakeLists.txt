@@ -11,5 +11,6 @@ target_sources(boolexpr PRIVATE
   product.c
   set.c
   simple.c
+  util.c
   vector.c
 )
