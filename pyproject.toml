@@ -3,9 +3,11 @@ name = "boolexpr"
 version = "0.0.1"
 description = "python binding for @cjdrake C BoolExpr library found in PyEDA"
 readme = "README.md"
+license = "GPL-3.0-or-later"
 authors = [
-    { name = "Kirill Shumilov", email = "shumilov.kirill98@gmail.com" }
+    { name = "Kirill Shumilov", email = "kshumil@ncsu.edu" }
 ]
+license-files = ["LICEN[CS]E*", "vendored/licenses/*.txt", "AUTHORS.md"]
 requires-python = ">=3.13"
 dependencies = []
 
