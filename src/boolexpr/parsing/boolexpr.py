@@ -1,4 +1,28 @@
 """
+Copyright (c) 2012, Chris Drake
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 Boolean Expression Parsing
 
 Exceptions:
@@ -13,10 +37,15 @@ Interface Functions:
 # scheme for the parsing tokens.
 # pylint: disable=C0103
 
-
 from . import lex
-from .token import (EndToken, IntegerToken, KeywordToken,
-                    NameToken, OperatorToken, PunctuationToken)
+from .token import (
+    EndToken,
+    IntegerToken,
+    KeywordToken,
+    NameToken,
+    OperatorToken,
+    PunctuationToken,
+)
 
 
 class Error(Exception):
@@ -26,76 +55,91 @@ class Error(Exception):
 # Keywords
 class KW_or(KeywordToken):
     """Expression 'Or' keyword"""
+
     ASTOP = "or"
 
 
 class KW_and(KeywordToken):
     """Expression 'And' keyword"""
+
     ASTOP = "and"
 
 
 class KW_xor(KeywordToken):
     """Expression 'Xor' keyword"""
+
     ASTOP = "xor"
 
 
 class KW_xnor(KeywordToken):
     """Expression 'Xnor' keyword"""
+
     ASTOP = "xnor"
 
 
 class KW_equal(KeywordToken):
     """Expression 'Equal' keyword"""
+
     ASTOP = "equal"
 
 
 class KW_unequal(KeywordToken):
     """Expression 'Unequal' keyword"""
+
     ASTOP = "unequal"
 
 
 class KW_nor(KeywordToken):
     """Expression 'Nor' keyword"""
+
     ASTOP = "nor"
 
 
 class KW_nand(KeywordToken):
     """Expression 'Nand' keyword"""
+
     ASTOP = "nand"
 
 
 class KW_onehot0(KeywordToken):
     """Expression 'OneHot0' keyword"""
+
     ASTOP = "onehot0"
 
 
 class KW_onehot(KeywordToken):
     """Expression 'OneHot' keyword"""
+
     ASTOP = "onehot"
 
 
 class KW_majority(KeywordToken):
     """Expression 'Majority' keyword"""
+
     ASTOP = "majority"
 
 
 class KW_achillesheel(KeywordToken):
     """Expression 'AchillesHeel' keyword"""
+
     ASTOP = "achillesheel"
 
 
 class KW_ite(KeywordToken):
     """Expression 'ITE' keyword"""
+
     ASTOP = "ite"
 
 
 class KW_implies(KeywordToken):
     """Expression 'Implies' keyword"""
+
     ASTOP = "implies"
 
 
 class KW_not(KeywordToken):
     """Expression 'Not' keyword"""
+
     ASTOP = "not"
 
 
@@ -159,6 +203,7 @@ class DOT(PunctuationToken):
 
 class BoolExprLexer(lex.RegexLexer):
     """Lexical analysis of SAT strings"""
+
     def ignore(self, text):
         """Ignore this text."""
 
@@ -190,7 +235,6 @@ class BoolExprLexer(lex.RegexLexer):
     RULES = {
         "root": [
             (r"\s+", ignore),
-
             (r"\bOr\b", keyword),
             (r"\bAnd\b", keyword),
             (r"\bXor\b", keyword),
@@ -203,14 +247,11 @@ class BoolExprLexer(lex.RegexLexer):
             (r"\bOneHot\b", keyword),
             (r"\bMajority\b", keyword),
             (r"\bAchillesHeel\b", keyword),
-
             (r"\bITE\b", keyword),
             (r"\bImplies\b", keyword),
             (r"\bNot\b", keyword),
-
             (r"[a-zA-Z_][a-zA-Z0-9_]*", name),
             (r"\d+", integer),
-
             (r"=>", operator),
             (r"<=>", operator),
             (r"\?", operator),
@@ -219,7 +260,6 @@ class BoolExprLexer(lex.RegexLexer):
             (r"\|", operator),
             (r"\^", operator),
             (r"\&", operator),
-
             (r"\(", punct),
             (r"\)", punct),
             (r"\[", punct),
@@ -230,33 +270,32 @@ class BoolExprLexer(lex.RegexLexer):
     }
 
     KEYWORDS = {
-        "Or":           KW_or,
-        "And":          KW_and,
-        "Xor":          KW_xor,
-        "Xnor":         KW_xnor,
-        "Equal":        KW_equal,
-        "Unequal":      KW_unequal,
-        "Nor":          KW_nor,
-        "Nand":         KW_nand,
-        "OneHot0":      KW_onehot0,
-        "OneHot":       KW_onehot,
-        "Majority":     KW_majority,
+        "Or": KW_or,
+        "And": KW_and,
+        "Xor": KW_xor,
+        "Xnor": KW_xnor,
+        "Equal": KW_equal,
+        "Unequal": KW_unequal,
+        "Nor": KW_nor,
+        "Nand": KW_nand,
+        "OneHot0": KW_onehot0,
+        "OneHot": KW_onehot,
+        "Majority": KW_majority,
         "AchillesHeel": KW_achillesheel,
-
-        "ITE":     KW_ite,
+        "ITE": KW_ite,
         "Implies": KW_implies,
-        "Not":     KW_not,
+        "Not": KW_not,
     }
 
     OPERATORS = {
-        "=>":  OP_rarrow,
+        "=>": OP_rarrow,
         "<=>": OP_lrarrow,
-        "?":   OP_question,
-        ":":   OP_colon,
-        "~":   OP_not,
-        "|":   OP_or,
-        "&":   OP_and,
-        "^":   OP_xor,
+        "?": OP_question,
+        ":": OP_colon,
+        "~": OP_not,
+        "|": OP_or,
+        "&": OP_and,
+        "^": OP_xor,
     }
 
     PUNCTUATION = {
@@ -355,9 +394,13 @@ OPN_TOKS = {
 }
 
 FACTOR_TOKS = {
-    OP_not, LPAREN,
-    KW_ite, KW_implies, KW_not,
-    NameToken, IntegerToken,
+    OP_not,
+    LPAREN,
+    KW_ite,
+    KW_implies,
+    KW_not,
+    NameToken,
+    IntegerToken,
 } | OPN_TOKS
 
 
@@ -407,8 +450,7 @@ def parse(s):
     try:
         expr = _expr(lexer)
     except lex.RunError as exc:
-        fstr = ("{0.args[0]}: "
-                "(line: {0.lineno}, offset: {0.offset}, text: {0.text})")
+        fstr = "{0.args[0]}: (line: {0.lineno}, offset: {0.offset}, text: {0.text})"
         raise Error(fstr.format(exc)) from exc
 
     # Check for end of buffer
@@ -573,7 +615,7 @@ def _factor(lexer):
             lexer.unpop_token(tok)
             xs = _args(lexer)
             _expect_token(lexer, {RPAREN})
-        return (op, ) + xs
+        return (op,) + xs
     # ITE '(' EXPR ',' EXPR ',' EXPR ')'
     elif toktype is KW_ite:
         _expect_token(lexer, {LPAREN})
@@ -611,7 +653,7 @@ def _factor(lexer):
 
 def _args(lexer):
     """Return a tuple of arguments."""
-    return (_expr(lexer), ) + _zom_arg(lexer)
+    return (_expr(lexer),) + _zom_arg(lexer)
 
 
 def _zom_arg(lexer):
@@ -619,7 +661,7 @@ def _zom_arg(lexer):
     tok = next(lexer)
     # ',' EXPR ZOM_X
     if isinstance(tok, COMMA):
-        return (_expr(lexer), ) + _zom_arg(lexer)
+        return (_expr(lexer),) + _zom_arg(lexer)
     # null
     else:
         lexer.unpop_token(tok)
@@ -647,7 +689,7 @@ def _names(lexer):
     """Return a tuple of names."""
     first = _expect_token(lexer, {NameToken}).value
     rest = _zom_name(lexer)
-    rnames = (first, ) + rest
+    rnames = (first,) + rest
     return rnames[::-1]
 
 
@@ -658,7 +700,7 @@ def _zom_name(lexer):
     if isinstance(tok, DOT):
         first = _expect_token(lexer, {NameToken}).value
         rest = _zom_name(lexer)
-        return (first, ) + rest
+        return (first,) + rest
     # null
     else:
         lexer.unpop_token(tok)
@@ -669,7 +711,7 @@ def _indices(lexer):
     """Return a tuple of indices."""
     first = _expect_token(lexer, {IntegerToken}).value
     rest = _zom_index(lexer)
-    return (first, ) + rest
+    return (first,) + rest
 
 
 def _zom_index(lexer):
@@ -679,7 +721,7 @@ def _zom_index(lexer):
     if isinstance(tok, COMMA):
         first = _expect_token(lexer, {IntegerToken}).value
         rest = _zom_index(lexer)
-        return (first, ) + rest
+        return (first,) + rest
     # null
     else:
         lexer.unpop_token(tok)

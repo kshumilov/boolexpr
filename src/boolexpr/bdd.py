@@ -1,4 +1,28 @@
 """
+Copyright (c) 2012, Chris Drake
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 The :mod:`pyeda.boolalg.bdd` module implements
 Boolean functions represented as binary decision diagrams.
 
@@ -54,6 +78,7 @@ class BDDNode:
     Do **NOT** create BDD nodes using the ``BDDNode`` constructor.
     BDD node instances are managed internally.
     """
+
     def __init__(self, root, lo, hi):
         self.root = root
         self.lo = lo
@@ -156,8 +181,9 @@ def bdd2expr(bdd, conj=False):
         paths = _iter_all_paths(bdd.node, BDDNODEONE)
     terms = []
     for path in paths:
-        expr_point = {exprvar(v.names, v.indices): val
-                      for v, val in _path2point(path).items()}
+        expr_point = {
+            exprvar(v.names, v.indices): val for v, val in _path2point(path).items()
+        }
         terms.append(boolfunc.point2term(expr_point, conj))
     return outer(*[inner(*term) for term in terms])
 
@@ -218,8 +244,10 @@ def _bdd(node):
 
 def _path2point(path):
     """Convert a BDD path to a BDD point."""
-    return {_VARS[node.root]: int(node.hi is path[i+1])
-            for i, node in enumerate(path[:-1])}
+    return {
+        _VARS[node.root]: int(node.hi is path[i + 1])
+        for i, node in enumerate(path[:-1])
+    }
 
 
 class BinaryDecisionDiagram(boolfunc.Function):
@@ -252,6 +280,7 @@ class BinaryDecisionDiagram(boolfunc.Function):
     and you will not be able to use the Python ``is`` operator to establish
     formal equivalence with manually constructed BDDs.
     """
+
     def __init__(self, node):
         self.node = node
 
@@ -383,15 +412,21 @@ class BinaryDecisionDiagram(boolfunc.Function):
             else:
                 v = _VARS[node.root]
                 parts.append("n" + str(id(node)))
-                parts.append(f"[label=\"{v}\",shape=circle];")
+                parts.append(f'[label="{v}",shape=circle];')
         for node in self.dfs_postorder():
             if node is not BDDNODEZERO and node is not BDDNODEONE:
-                parts += ["n" + str(id(node)), "--",
-                          "n" + str(id(node.lo)),
-                          "[label=0,style=dashed];"]
-                parts += ["n" + str(id(node)), "--",
-                          "n" + str(id(node.hi)),
-                          "[label=1];"]
+                parts += [
+                    "n" + str(id(node)),
+                    "--",
+                    "n" + str(id(node.lo)),
+                    "[label=0,style=dashed];",
+                ]
+                parts += [
+                    "n" + str(id(node)),
+                    "--",
+                    "n" + str(id(node.hi)),
+                    "[label=1];",
+                ]
         parts.append("}")
         return " ".join(parts)
 
@@ -406,6 +441,7 @@ class BDDConstant(BinaryDecisionDiagram):
     BDD instances are managed internally,
     and the BDD zero/one instances are singletons.
     """
+
     def __init__(self, node, value):
         super().__init__(node)
         self.value = value
@@ -436,6 +472,7 @@ class BDDVariable(boolfunc.Variable, BinaryDecisionDiagram):
     Do **NOT** create a BDD using the ``BDDVariable`` constructor.
     Use the :func:`bddvar` function instead.
     """
+
     def __init__(self, bvar):
         boolfunc.Variable.__init__(self, bvar.names, bvar.indices)
         node = _bddnode(bvar.uniqid, BDDNODEZERO, BDDNODEONE)
@@ -508,7 +545,7 @@ def _find_path(start, end, path=tuple()):
 
     If no path exists, return None.
     """
-    path = path + (start, )
+    path = path + (start,)
     if start is end:
         return path
     else:
@@ -522,7 +559,7 @@ def _find_path(start, end, path=tuple()):
 
 def _iter_all_paths(start, end, rand=False, path=tuple()):
     """Iterate through all paths from start to end."""
-    path = path + (start, )
+    path = path + (start,)
     if start is end:
         yield path
     else:

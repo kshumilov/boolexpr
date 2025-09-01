@@ -1,4 +1,28 @@
 """
+Copyright (c) 2012, Chris Drake
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 The :mod:`pyeda.boolalg.expr` module implements
 Boolean functions represented as expressions.
 
@@ -94,7 +118,6 @@ Interface Classes:
 # Disable 'no-member' error, b/c pylint can't look into C extensions
 # foo bar pylint: disable=E1101
 
-
 import itertools
 import os
 import random
@@ -186,15 +209,12 @@ def _exprcomp(node):
 _KIND2EXPR = {
     exprnode.ZERO: lambda node: Zero,
     exprnode.ONE: lambda node: One,
-
     exprnode.COMP: lambda node: _exprcomp(node),
     exprnode.VAR: lambda node: _LITS[node.data()],
-
     exprnode.OP_OR: lambda node: OrOp(node),
     exprnode.OP_AND: lambda node: AndOp(node),
     exprnode.OP_XOR: lambda node: XorOp(node),
     exprnode.OP_EQ: lambda node: EqualOp(node),
-
     exprnode.OP_NOT: lambda node: NotOp(node),
     exprnode.OP_IMPL: lambda node: ImpliesOp(node),
     exprnode.OP_ITE: lambda node: IfThenElseOp(node),
@@ -261,27 +281,24 @@ def expr2dimacssat(ex):
     return f"p {fmt} {nvars}\n{formula}"
 
 
-def _expr2sat(ex, litmap): # pragma: no cover
+def _expr2sat(ex, litmap):  # pragma: no cover
     """Convert an expression to a DIMACS SAT string."""
     if isinstance(ex, Literal):
         return str(litmap[ex])
     elif isinstance(ex, NotOp):
         return "-(" + _expr2sat(ex.x, litmap) + ")"
     elif isinstance(ex, OrOp):
-        return "+(" + " ".join(_expr2sat(x, litmap)
-                               for x in ex.xs) + ")"
+        return "+(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
     elif isinstance(ex, AndOp):
-        return "*(" + " ".join(_expr2sat(x, litmap)
-                               for x in ex.xs) + ")"
+        return "*(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
     elif isinstance(ex, XorOp):
-        return ("xor(" + " ".join(_expr2sat(x, litmap)
-                                  for x in ex.xs) + ")")
+        return "xor(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
     elif isinstance(ex, EqualOp):
-        return "=(" + " ".join(_expr2sat(x, litmap)
-                               for x in ex.xs) + ")"
+        return "=(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
     else:
-        fstr = ("expected ex to be a Literal or Not/Or/And/Xor/Equal op, "
-                "got {0.__name__}")
+        fstr = (
+            "expected ex to be a Literal or Not/Or/And/Xor/Equal op, got {0.__name__}"
+        )
         raise ValueError(fstr.format(type(ex)))
 
 
@@ -452,8 +469,7 @@ def OneHot0(*xs, simplify=True, conj=True):
     terms = []
     if conj:
         for x0, x1 in itertools.combinations(xs, 2):
-            terms.append(exprnode.or_(exprnode.not_(x0),
-                                      exprnode.not_(x1)))
+            terms.append(exprnode.or_(exprnode.not_(x0), exprnode.not_(x1)))
         y = exprnode.and_(*terms)
     else:
         for xs_ in itertools.combinations(xs, len(xs) - 1):
@@ -478,13 +494,12 @@ def OneHot(*xs, simplify=True, conj=True):
     terms = []
     if conj:
         for x0, x1 in itertools.combinations(xs, 2):
-            terms.append(exprnode.or_(exprnode.not_(x0),
-                                      exprnode.not_(x1)))
+            terms.append(exprnode.or_(exprnode.not_(x0), exprnode.not_(x1)))
         terms.append(exprnode.or_(*xs))
         y = exprnode.and_(*terms)
     else:
         for i, xi in enumerate(xs):
-            zeros = [exprnode.not_(x) for x in xs[:i] + xs[i+1:]]
+            zeros = [exprnode.not_(x) for x in xs[:i] + xs[i + 1 :]]
             terms.append(exprnode.and_(xi, *zeros))
         y = exprnode.or_(*terms)
     if simplify:
@@ -510,8 +525,7 @@ def NHot(n, *xs, simplify=True):
     terms = []
     for hot_idxs in itertools.combinations(range(num), n):
         hot_idxs = set(hot_idxs)
-        xs_ = [xs[i] if i in hot_idxs else exprnode.not_(xs[i])
-               for i in range(num)]
+        xs_ = [xs[i] if i in hot_idxs else exprnode.not_(xs[i]) for i in range(num)]
         terms.append(exprnode.and_(*xs_))
     y = exprnode.or_(*terms)
     if simplify:
@@ -557,8 +571,9 @@ def AchillesHeel(*xs, simplify=True):
         fstr = "expected an even number of arguments, got {}"
         raise ValueError(fstr.format(nargs))
     xs = [Expression.box(x).node for x in xs]
-    y = exprnode.and_(*[exprnode.or_(xs[2*i], xs[2*i+1])
-                        for i in range(nargs // 2)])
+    y = exprnode.and_(
+        *[exprnode.or_(xs[2 * i], xs[2 * i + 1]) for i in range(nargs // 2)]
+    )
     if simplify:
         y = y.simplify()
     return _expr(y)
@@ -578,8 +593,9 @@ def Mux(fs, sel, simplify=True):
         raise ValueError(fstr.format(clog2(len(fs)), len(sel)))
 
     it = boolfunc.iter_terms(sel)
-    y = exprnode.or_(*[exprnode.and_(f.node, *[lit.node for lit in next(it)])
-                       for f in fs])
+    y = exprnode.or_(
+        *[exprnode.and_(f.node, *[lit.node for lit in next(it)]) for f in fs]
+    )
     if simplify:
         y = y.simplify()
     return _expr(y)
@@ -855,6 +871,7 @@ class Expression(boolfunc.Function):
             return self
         else:
             return _expr(node)
+
     ### End C API ###
 
     def expand(self, vs=None, conj=False):
@@ -862,9 +879,10 @@ class Expression(boolfunc.Function):
         vs = self._expect_vars(vs)
         if vs:
             outer, inner = (And, Or) if conj else (Or, And)
-            terms = [inner(self.restrict(p),
-                           *boolfunc.point2term(p, conj))
-                     for p in boolfunc.iter_points(vs)]
+            terms = [
+                inner(self.restrict(p), *boolfunc.point2term(p, conj))
+                for p in boolfunc.iter_points(vs)
+            ]
             if conj:
                 terms = [term for term in terms if term is not One]
             else:
@@ -917,7 +935,7 @@ class Expression(boolfunc.Function):
         rst = [Equal(v, ex).to_cnf() for v, ex in constraints[:-1]]
         return And(fst, *rst)
 
-    def to_dot(self, name="EXPR"): # pragma: no cover
+    def to_dot(self, name="EXPR"):  # pragma: no cover
         """Convert to DOT language representation."""
         parts = ["graph", name, "{", "rankdir=BT;"]
         for ex in self.iter_dfs():
@@ -927,7 +945,7 @@ class Expression(boolfunc.Function):
             elif ex is One:
                 parts += [f"n{exid} [label=1,shape=box];"]
             elif isinstance(ex, Literal):
-                parts += [f"n{exid} [label=\"{ex}\",shape=box];"]
+                parts += [f'n{exid} [label="{ex}",shape=box];']
             else:
                 parts += [f"n{exid} [label={ex.ASTOP},shape=circle];"]
         for ex in self.iter_dfs():
@@ -956,6 +974,7 @@ class Atom(Expression):
 
 class Constant(Atom):
     """Constant Expression"""
+
     VALUE = NotImplemented
 
 
@@ -1171,12 +1190,14 @@ class AndOp(OrAndOp):
 
 class XorOp(NaryOp):
     """XOR Operator"""
+
     ASTOP = "xor"
     NAME = "Xor"
 
 
 class EqualOp(NaryOp):
     """Equal Operator"""
+
     ASTOP = "eq"
     NAME = "Equal"
 
@@ -1243,8 +1264,9 @@ class NormalForm:
         return self.__str__()
 
     def __str__(self):
-        return "\n".join(" ".join(str(idx) for idx in clause) + " 0"
-                         for clause in self.clauses)
+        return "\n".join(
+            " ".join(str(idx) for idx in clause) + " 0" for clause in self.clauses
+        )
 
     @cached_property
     def nclauses(self):
@@ -1257,14 +1279,13 @@ class NormalForm:
 
     def reduce(self):
         """Reduce to a canonical form."""
-        support = frozenset(range(1, self.nvars+1))
+        support = frozenset(range(1, self.nvars + 1))
         new_clauses = set()
         for clause in self.clauses:
             vs = list(support - {abs(uniqid) for uniqid in clause})
             if vs:
                 for num in range(1 << len(vs)):
-                    new_part = {v if bit_on(num, i) else ~v
-                                for i, v in enumerate(vs)}
+                    new_part = {v if bit_on(num, i) else ~v for i, v in enumerate(vs)}
                     new_clauses.add(clause | new_part)
             else:
                 new_clauses.add(clause)
@@ -1276,8 +1297,7 @@ class DisjNormalForm(NormalForm):
 
     def decode(self, litmap):
         """Convert the DNF to an expression."""
-        return Or(*[And(*[litmap[idx] for idx in clause])
-                    for clause in self.clauses])
+        return Or(*[And(*[litmap[idx] for idx in clause]) for clause in self.clauses])
 
     def invert(self):
         clauses = {frozenset(-idx for idx in clause) for clause in self.clauses}
@@ -1289,8 +1309,7 @@ class ConjNormalForm(NormalForm):
 
     def decode(self, litmap):
         """Convert the CNF to an expression."""
-        return And(*[Or(*[litmap[idx] for idx in clause])
-                     for clause in self.clauses])
+        return And(*[Or(*[litmap[idx] for idx in clause]) for clause in self.clauses])
 
     def invert(self):
         clauses = {frozenset(-idx for idx in clause) for clause in self.clauses}
@@ -1299,8 +1318,7 @@ class ConjNormalForm(NormalForm):
     @staticmethod
     def soln2point(soln, litmap):
         """Convert a solution vector to a point."""
-        return {litmap[i]: int(val > 0)
-                for i, val in enumerate(soln, start=1)}
+        return {litmap[i]: int(val > 0) for i, val in enumerate(soln, start=1)}
 
 
 class DimacsCNF(ConjNormalForm):
@@ -1345,12 +1363,10 @@ ASTOPS = {
     "equal": Equal,
     "implies": Implies,
     "ite": ITE,
-
     "nor": Nor,
     "nand": Nand,
     "xnor": Xnor,
     "unequal": Unequal,
-
     "onehot0": OneHot0,
     "onehot": OneHot,
     "majority": Majority,

@@ -1,4 +1,28 @@
 """
+Copyright (c) 2012, Chris Drake
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 DIMACS
 
 For more information on the input formats,
@@ -21,10 +45,8 @@ Interface Functions:
 # scheme for the parsing tokens.
 # pylint: disable=C0103
 
-
 from . import lex
-from .token import (EndToken, IntegerToken, KeywordToken,
-                    OperatorToken, PunctuationToken)
+from .token import EndToken, IntegerToken, KeywordToken, OperatorToken, PunctuationToken
 
 
 class Error(Exception):
@@ -59,26 +81,31 @@ class KW_satex(KeywordToken):
 # Operators
 class OP_not(OperatorToken):
     """DIMACS '-' operator"""
+
     ASTOP = "not"
 
 
 class OP_or(OperatorToken):
     """DIMACS '+' operator"""
+
     ASTOP = "or"
 
 
 class OP_and(OperatorToken):
     """DIMACS '*' operator"""
+
     ASTOP = "and"
 
 
 class OP_xor(OperatorToken):
     """DIMACS 'xor' operator"""
+
     ASTOP = "xor"
 
 
 class OP_equal(OperatorToken):
     """DIMACS '=' operator"""
+
     ASTOP = "equal"
 
 
@@ -93,6 +120,7 @@ class RPAREN(PunctuationToken):
 
 class CNFLexer(lex.RegexLexer):
     """Lexical analysis of CNF strings"""
+
     def ignore(self, text):
         """Ignore this text."""
 
@@ -179,8 +207,7 @@ def parse_cnf(s, varname="x"):
     try:
         ast = _cnf(lexer, varname)
     except lex.RunError as exc:
-        fstr = ("{0.args[0]}: "
-                "(line: {0.lineno}, offset: {0.offset}, text: {0.text})")
+        fstr = "{0.args[0]}: (line: {0.lineno}, offset: {0.offset}, text: {0.text})"
         raise Error(fstr.format(exc)) from exc
 
     # Check for end of buffer
@@ -209,7 +236,7 @@ def _cnf_formula(lexer, varname, nvars, nclauses):
         fstr = "formula has more than {} clauses"
         raise Error(fstr.format(nclauses))
 
-    return ("and", ) + clauses
+    return ("and",) + clauses
 
 
 def _clauses(lexer, varname, nvars):
@@ -220,7 +247,7 @@ def _clauses(lexer, varname, nvars):
         lexer.unpop_token(tok)
         first = _clause(lexer, varname, nvars)
         rest = _clauses(lexer, varname, nvars)
-        return (first, ) + rest
+        return (first,) + rest
     # null
     else:
         lexer.unpop_token(tok)
@@ -229,7 +256,7 @@ def _clauses(lexer, varname, nvars):
 
 def _clause(lexer, varname, nvars):
     """Return a DIMACS CNF clause."""
-    return ("or", ) + _lits(lexer, varname, nvars)
+    return ("or",) + _lits(lexer, varname, nvars)
 
 
 def _lits(lexer, varname, nvars):
@@ -249,15 +276,16 @@ def _lits(lexer, varname, nvars):
             fstr = "formula literal {} is greater than {}"
             raise Error(fstr.format(index, nvars))
 
-        lit = ("var", (varname, ), (index, ))
+        lit = ("var", (varname,), (index,))
         if neg:
             lit = ("not", lit)
 
-        return (lit, ) + _lits(lexer, varname, nvars)
+        return (lit,) + _lits(lexer, varname, nvars)
 
 
 class SATLexer(lex.RegexLexer):
     """Lexical analysis of SAT strings"""
+
     def ignore(self, text):
         """Ignore this text."""
 
@@ -372,8 +400,7 @@ def parse_sat(s, varname="x"):
     try:
         ast = _sat(lexer, varname)
     except lex.RunError as exc:
-        fstr = ("{0.args[0]}: "
-                "(line: {0.lineno}, offset: {0.offset}, text: {0.text})")
+        fstr = "{0.args[0]}: (line: {0.lineno}, offset: {0.offset}, text: {0.text})"
         raise Error(fstr.format(exc)) from exc
 
     # Check for end of buffer
@@ -400,7 +427,7 @@ def _sat_formula(lexer, varname, fmt, nvars):
         if not 0 < index <= nvars:
             fstr = "formula literal {} outside valid range: (0, {}]"
             raise Error(fstr.format(index, nvars))
-        return ("var", (varname, ), (index, ))
+        return ("var", (varname,), (index,))
     # '-'
     elif isinstance(tok, OP_not):
         tok = _expect_token(lexer, {IntegerToken, LPAREN})
@@ -410,7 +437,7 @@ def _sat_formula(lexer, varname, fmt, nvars):
             if not 0 < index <= nvars:
                 fstr = "formula literal {} outside valid range: (0, {}]"
                 raise Error(fstr.format(index, nvars))
-            return ("not", ("var", (varname, ), (index, )))
+            return ("not", ("var", (varname,), (index,)))
         # '-' '(' FORMULA ')'
         else:
             formula = _sat_formula(lexer, varname, fmt, nvars)
@@ -426,7 +453,7 @@ def _sat_formula(lexer, varname, fmt, nvars):
         _expect_token(lexer, {LPAREN})
         formulas = _formulas(lexer, varname, fmt, nvars)
         _expect_token(lexer, {RPAREN})
-        return (tok.ASTOP, ) + formulas
+        return (tok.ASTOP,) + formulas
 
 
 def _formulas(lexer, varname, fmt, nvars):
@@ -436,7 +463,7 @@ def _formulas(lexer, varname, fmt, nvars):
     if any(isinstance(tok, t) for t in types):
         first = _sat_formula(lexer, varname, fmt, nvars)
         rest = _formulas(lexer, varname, fmt, nvars)
-        return (first, ) + rest
+        return (first,) + rest
     # null
     else:
         return tuple()
