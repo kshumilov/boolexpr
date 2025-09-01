@@ -7,7 +7,11 @@ license = "GPL-3.0-or-later"
 authors = [
     { name = "Kirill Shumilov", email = "kshumil@ncsu.edu" }
 ]
-license-files = ["LICEN[CS]E*", "vendored/licenses/*.txt", "AUTHORS.md"]
+license-files = [
+    "LICEN[CS]E*",
+    "src/exprnode/src/LICENSE",
+    "src/exprnode/test/LICENSE",
+]
 requires-python = ">=3.13"
 dependencies = []
 
