@@ -23,6 +23,68 @@ dev = [
     "ruff>=0.12.11",
 ]
 
+[tool.ruff]
+line-length = 120
+indent-width = 4
+exclude = [
+    "ipynb",
+]
+
+[tool.ruff.lint]
+# Add the `line-too-long` rule to the enforced rule set. By default, Ruff omits rules that
+# overlap with the use of a formatter, like Black, but we can override this behavior by
+# explicitly adding the rule.
+select = [
+    "E", "W", # pycodestyle
+    "F",      # Pyflakes
+    "UP",     # Warn if certain things can changed due to newer Python versions
+    "D",   # pydocstyle
+    "C4",     # Catch incorrect use of comprehensions, dict, list, etc
+    "ISC",    # Good use of string concatenation
+    "ICN",    # Use common import conventions
+    "PTH",    # Use pathlib instead of os.path
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    "TD",  # Be diligent with TODO comments
+    "A",   # detect shadowed builtins
+    "BLE", # disallow catch-all exceptions
+    "COM", # enforce trailing comma rules
+    "FBT", # detect boolean traps
+    "N",   # enforce naming conventions, e.g. ClassName vs function_name
+    "INP",
+    "PIE",
+    "RET",
+    "TID",
+    "ARG",
+    "TC",
+    "ERA",
+    "INT",
+    "INP",
+    "RSE",
+    "FLY",
+    "C90",
+    "PL",
+]
+
+ignore = [
+    "B011",
+    "COM819",
+    "COM812",
+    "D100", # Remove soon
+    "D104", # Remove soon
+    "D400", # Remove soon
+    "D205", # Remove soon
+    "N801", # PyEDA conventions
+    "D105",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.scikit-build]
 minimum-version = "build-system.requires"
 build-dir = "build/{wheel_tag}"
