@@ -464,8 +464,7 @@ def _expect_token(lexer, types):
     tok = next(lexer)
     if any(isinstance(tok, t) for t in types):
         return tok
-    else:
-        raise Error("unexpected token: " + str(tok))
+    raise Error("unexpected token: " + str(tok))
 
 
 def _expr(lexer):
@@ -485,9 +484,8 @@ def _ite(lexer):
         d0 = _ite(lexer)
         return ("ite", s, d1, d0)
     # IMPL
-    else:
-        lexer.unpop_token(tok)
-        return s
+    lexer.unpop_token(tok)
+    return s
 
 
 def _impl(lexer):
@@ -500,13 +498,12 @@ def _impl(lexer):
         q = _impl(lexer)
         return ("implies", p, q)
     # SUMTERM '<=>' IMPL
-    elif isinstance(tok, OP_lrarrow):
+    if isinstance(tok, OP_lrarrow):
         q = _impl(lexer)
         return ("equal", p, q)
     # SUMTERM
-    else:
-        lexer.unpop_token(tok)
-        return p
+    lexer.unpop_token(tok)
+    return p
 
 
 def _sumterm(lexer):
@@ -515,8 +512,7 @@ def _sumterm(lexer):
     sumterm_prime = _sumterm_prime(lexer)
     if sumterm_prime is None:
         return xorterm
-    else:
-        return ("or", xorterm, sumterm_prime)
+    return ("or", xorterm, sumterm_prime)
 
 
 def _sumterm_prime(lexer):
@@ -528,12 +524,10 @@ def _sumterm_prime(lexer):
         sumterm_prime = _sumterm_prime(lexer)
         if sumterm_prime is None:
             return xorterm
-        else:
-            return ("or", xorterm, sumterm_prime)
+        return ("or", xorterm, sumterm_prime)
     # null
-    else:
-        lexer.unpop_token(tok)
-        return None
+    lexer.unpop_token(tok)
+    return None
 
 
 def _xorterm(lexer):
@@ -542,8 +536,7 @@ def _xorterm(lexer):
     xorterm_prime = _xorterm_prime(lexer)
     if xorterm_prime is None:
         return prodterm
-    else:
-        return ("xor", prodterm, xorterm_prime)
+    return ("xor", prodterm, xorterm_prime)
 
 
 def _xorterm_prime(lexer):
@@ -555,12 +548,10 @@ def _xorterm_prime(lexer):
         xorterm_prime = _xorterm_prime(lexer)
         if xorterm_prime is None:
             return prodterm
-        else:
-            return ("xor", prodterm, xorterm_prime)
+        return ("xor", prodterm, xorterm_prime)
     # null
-    else:
-        lexer.unpop_token(tok)
-        return None
+    lexer.unpop_token(tok)
+    return None
 
 
 def _prodterm(lexer):
@@ -569,8 +560,7 @@ def _prodterm(lexer):
     prodterm_prime = _prodterm_prime(lexer)
     if prodterm_prime is None:
         return factor
-    else:
-        return ("and", factor, prodterm_prime)
+    return ("and", factor, prodterm_prime)
 
 
 def _prodterm_prime(lexer):
@@ -582,12 +572,10 @@ def _prodterm_prime(lexer):
         prodterm_prime = _prodterm_prime(lexer)
         if prodterm_prime is None:
             return factor
-        else:
-            return ("and", factor, prodterm_prime)
+        return ("and", factor, prodterm_prime)
     # null
-    else:
-        lexer.unpop_token(tok)
-        return None
+    lexer.unpop_token(tok)
+    return None
 
 
 def _factor(lexer):
@@ -598,12 +586,12 @@ def _factor(lexer):
     if toktype is OP_not:
         return ("not", _factor(lexer))
     # '(' EXPR ')'
-    elif toktype is LPAREN:
+    if toktype is LPAREN:
         expr = _expr(lexer)
         _expect_token(lexer, {RPAREN})
         return expr
     # OPN '(' ... ')'
-    elif any(toktype is t for t in OPN_TOKS):
+    if any(toktype is t for t in OPN_TOKS):
         op = tok.ASTOP
         _expect_token(lexer, {LPAREN})
         tok = next(lexer)
@@ -617,7 +605,7 @@ def _factor(lexer):
             _expect_token(lexer, {RPAREN})
         return (op,) + xs
     # ITE '(' EXPR ',' EXPR ',' EXPR ')'
-    elif toktype is KW_ite:
+    if toktype is KW_ite:
         _expect_token(lexer, {LPAREN})
         s = _expr(lexer)
         _expect_token(lexer, {COMMA})
@@ -627,7 +615,7 @@ def _factor(lexer):
         _expect_token(lexer, {RPAREN})
         return ("ite", s, d1, d0)
     # Implies '(' EXPR ',' EXPR ')'
-    elif toktype is KW_implies:
+    if toktype is KW_implies:
         _expect_token(lexer, {LPAREN})
         p = _expr(lexer)
         _expect_token(lexer, {COMMA})
@@ -635,20 +623,19 @@ def _factor(lexer):
         _expect_token(lexer, {RPAREN})
         return ("implies", p, q)
     # Not '(' EXPR ')'
-    elif toktype is KW_not:
+    if toktype is KW_not:
         _expect_token(lexer, {LPAREN})
         x = _expr(lexer)
         _expect_token(lexer, {RPAREN})
         return ("not", x)
     # VARIABLE
-    elif toktype is NameToken:
+    if toktype is NameToken:
         lexer.unpop_token(tok)
         return _variable(lexer)
     # '0' | '1'
-    else:
-        if tok.value not in {0, 1}:
-            raise Error("unexpected token: " + str(tok))
-        return ("const", tok.value)
+    if tok.value not in {0, 1}:
+        raise Error("unexpected token: " + str(tok))
+    return ("const", tok.value)
 
 
 def _args(lexer):
@@ -663,9 +650,8 @@ def _zom_arg(lexer):
     if isinstance(tok, COMMA):
         return (_expr(lexer),) + _zom_arg(lexer)
     # null
-    else:
-        lexer.unpop_token(tok)
-        return tuple()
+    lexer.unpop_token(tok)
+    return tuple()
 
 
 def _variable(lexer):
@@ -702,9 +688,8 @@ def _zom_name(lexer):
         rest = _zom_name(lexer)
         return (first,) + rest
     # null
-    else:
-        lexer.unpop_token(tok)
-        return tuple()
+    lexer.unpop_token(tok)
+    return tuple()
 
 
 def _indices(lexer):
@@ -723,6 +708,5 @@ def _zom_index(lexer):
         rest = _zom_index(lexer)
         return (first,) + rest
     # null
-    else:
-        lexer.unpop_token(tok)
-        return tuple()
+    lexer.unpop_token(tok)
+    return tuple()

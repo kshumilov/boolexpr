@@ -101,8 +101,7 @@ class RegexLexer:
     def __next__(self):
         if self.tokens:
             return self.tokens.pop()
-        else:
-            return next(self.gtoks)
+        return next(self.gtoks)
 
     def _compile_rules(self):
         """Compile the rules into the internal lexer state."""

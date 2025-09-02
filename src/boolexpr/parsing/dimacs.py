@@ -172,8 +172,7 @@ def _expect_token(lexer, types):
     tok = next(lexer)
     if any(isinstance(tok, t) for t in types):
         return tok
-    else:
-        raise Error("unexpected token: " + str(tok))
+    raise Error("unexpected token: " + str(tok))
 
 
 def parse_cnf(s, varname="x"):
@@ -249,9 +248,8 @@ def _clauses(lexer, varname, nvars):
         rest = _clauses(lexer, varname, nvars)
         return (first,) + rest
     # null
-    else:
-        lexer.unpop_token(tok)
-        return tuple()
+    lexer.unpop_token(tok)
+    return tuple()
 
 
 def _clause(lexer, varname, nvars):
@@ -264,23 +262,22 @@ def _lits(lexer, varname, nvars):
     tok = _expect_token(lexer, {OP_not, IntegerToken})
     if isinstance(tok, IntegerToken) and tok.value == 0:
         return tuple()
+    if isinstance(tok, OP_not):
+        neg = True
+        tok = _expect_token(lexer, {IntegerToken})
     else:
-        if isinstance(tok, OP_not):
-            neg = True
-            tok = _expect_token(lexer, {IntegerToken})
-        else:
-            neg = False
-        index = tok.value
+        neg = False
+    index = tok.value
 
-        if index > nvars:
-            fstr = "formula literal {} is greater than {}"
-            raise Error(fstr.format(index, nvars))
+    if index > nvars:
+        fstr = "formula literal {} is greater than {}"
+        raise Error(fstr.format(index, nvars))
 
-        lit = ("var", (varname,), (index,))
-        if neg:
-            lit = ("not", lit)
+    lit = ("var", (varname,), (index,))
+    if neg:
+        lit = ("not", lit)
 
-        return (lit,) + _lits(lexer, varname, nvars)
+    return (lit,) + _lits(lexer, varname, nvars)
 
 
 class SATLexer(lex.RegexLexer):
@@ -429,7 +426,7 @@ def _sat_formula(lexer, varname, fmt, nvars):
             raise Error(fstr.format(index, nvars))
         return ("var", (varname,), (index,))
     # '-'
-    elif isinstance(tok, OP_not):
+    if isinstance(tok, OP_not):
         tok = _expect_token(lexer, {IntegerToken, LPAREN})
         # '-' INT
         if isinstance(tok, IntegerToken):
@@ -439,21 +436,19 @@ def _sat_formula(lexer, varname, fmt, nvars):
                 raise Error(fstr.format(index, nvars))
             return ("not", ("var", (varname,), (index,)))
         # '-' '(' FORMULA ')'
-        else:
-            formula = _sat_formula(lexer, varname, fmt, nvars)
-            _expect_token(lexer, {RPAREN})
-            return ("not", formula)
+        formula = _sat_formula(lexer, varname, fmt, nvars)
+        _expect_token(lexer, {RPAREN})
+        return ("not", formula)
     # '(' FORMULA ')'
-    elif isinstance(tok, LPAREN):
+    if isinstance(tok, LPAREN):
         formula = _sat_formula(lexer, varname, fmt, nvars)
         _expect_token(lexer, {RPAREN})
         return formula
     # OP '(' FORMULAS ')'
-    else:
-        _expect_token(lexer, {LPAREN})
-        formulas = _formulas(lexer, varname, fmt, nvars)
-        _expect_token(lexer, {RPAREN})
-        return (tok.ASTOP,) + formulas
+    _expect_token(lexer, {LPAREN})
+    formulas = _formulas(lexer, varname, fmt, nvars)
+    _expect_token(lexer, {RPAREN})
+    return (tok.ASTOP,) + formulas
 
 
 def _formulas(lexer, varname, fmt, nvars):
@@ -465,5 +460,4 @@ def _formulas(lexer, varname, fmt, nvars):
         rest = _formulas(lexer, varname, fmt, nvars)
         return (first,) + rest
     # null
-    else:
-        return tuple()
+    return tuple()

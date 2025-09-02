@@ -48,6 +48,10 @@ import random
 import weakref
 from functools import cached_property
 
+import boolexpr.boolfunc.function
+import boolexpr.boolfunc.utils
+import boolexpr.boolfunc.variable
+
 from . import boolfunc
 from .expr import And, Or, exprvar
 
@@ -128,7 +132,7 @@ def bddvar(name, index=None):
        For creating arrays of variables with incremental indices,
        use the :func:`pyeda.boolalg.bfarray.bddvars` function.
     """
-    bvar = boolfunc.var(name, index)
+    bvar = boolexpr.boolfunc.variable.var(name, index)
     try:
         var = _VARS[bvar.uniqid]
     except KeyError:
@@ -141,18 +145,17 @@ def _expr2bddnode(expr):
     """Convert an expression into a BDD node."""
     if expr.is_zero():
         return BDDNODEZERO
-    elif expr.is_one():
+    if expr.is_one():
         return BDDNODEONE
-    else:
-        top = expr.top
+    top = expr.top
 
-        # Register this variable
-        _ = bddvar(top.names, top.indices)
+    # Register this variable
+    _ = bddvar(top.names, top.indices)
 
-        root = top.uniqid
-        lo = _expr2bddnode(expr.restrict({top: 0}))
-        hi = _expr2bddnode(expr.restrict({top: 1}))
-        return _bddnode(root, lo, hi)
+    root = top.uniqid
+    lo = _expr2bddnode(expr.restrict({top: 0}))
+    hi = _expr2bddnode(expr.restrict({top: 1}))
+    return _bddnode(root, lo, hi)
 
 
 def expr2bdd(expr):
@@ -181,10 +184,8 @@ def bdd2expr(bdd, conj=False):
         paths = _iter_all_paths(bdd.node, BDDNODEONE)
     terms = []
     for path in paths:
-        expr_point = {
-            exprvar(v.names, v.indices): val for v, val in _path2point(path).items()
-        }
-        terms.append(boolfunc.point2term(expr_point, conj))
+        expr_point = {exprvar(v.names, v.indices): val for v, val in _path2point(path).items()}
+        terms.append(boolexpr.boolfunc.utils.point2term(expr_point, conj))
     return outer(*[inner(*term) for term in terms])
 
 
@@ -244,13 +245,10 @@ def _bdd(node):
 
 def _path2point(path):
     """Convert a BDD path to a BDD point."""
-    return {
-        _VARS[node.root]: int(node.hi is path[i + 1])
-        for i, node in enumerate(path[:-1])
-    }
+    return {_VARS[node.root]: int(node.hi is path[i + 1]) for i, node in enumerate(path[:-1])}
 
 
-class BinaryDecisionDiagram(boolfunc.Function):
+class BinaryDecisionDiagram(boolexpr.boolfunc.function.Function):
     """Boolean function represented by a binary decision diagram
 
     .. seealso::
@@ -343,8 +341,7 @@ class BinaryDecisionDiagram(boolfunc.Function):
         path = _find_path(self.node, BDDNODEONE)
         if path is None:
             return None
-        else:
-            return _path2point(path)
+        return _path2point(path)
 
     def satisfy_all(self):
         for path in _iter_all_paths(self.node, BDDNODEONE):
@@ -360,12 +357,11 @@ class BinaryDecisionDiagram(boolfunc.Function):
     def box(obj):
         if isinstance(obj, BinaryDecisionDiagram):
             return obj
-        elif obj in (0, "0"):
+        if obj in (0, "0"):
             return BDDZERO
-        elif obj in (1, "1"):
+        if obj in (1, "1"):
             return BDDONE
-        else:
-            return BDDONE if bool(obj) else BDDZERO
+        return BDDONE if bool(obj) else BDDZERO
 
     # Specific to BinaryDecisionDiagram
     def dfs_preorder(self):
@@ -463,7 +459,7 @@ BDDZERO = _BDDS[BDDNODEZERO] = BDDConstant(BDDNODEZERO, 0)
 BDDONE = _BDDS[BDDNODEONE] = BDDConstant(BDDNODEONE, 1)
 
 
-class BDDVariable(boolfunc.Variable, BinaryDecisionDiagram):
+class BDDVariable(boolexpr.boolfunc.variable.Variable, BinaryDecisionDiagram):
     """Binary decision diagram variable
 
     The ``BDDVariable`` class is useful for type checking,
@@ -474,7 +470,7 @@ class BDDVariable(boolfunc.Variable, BinaryDecisionDiagram):
     """
 
     def __init__(self, bvar):
-        boolfunc.Variable.__init__(self, bvar.names, bvar.indices)
+        boolexpr.boolfunc.variable.Variable.__init__(self, bvar.names, bvar.indices)
         node = _bddnode(bvar.uniqid, BDDNODEZERO, BDDNODEONE)
         BinaryDecisionDiagram.__init__(self, node)
 
@@ -483,10 +479,9 @@ def _neg(node):
     """Return the inverse of *node*."""
     if node is BDDNODEZERO:
         return BDDNODEONE
-    elif node is BDDNODEONE:
+    if node is BDDNODEONE:
         return BDDNODEZERO
-    else:
-        return _bddnode(node.root, _neg(node.lo), _neg(node.hi))
+    return _bddnode(node.root, _neg(node.lo), _neg(node.hi))
 
 
 def _ite(f, g, h):
@@ -495,25 +490,24 @@ def _ite(f, g, h):
     if g is BDDNODEONE and h is BDDNODEZERO:
         return f
     # ITE(f, 0, 1) = f'
-    elif g is BDDNODEZERO and h is BDDNODEONE:
+    if g is BDDNODEZERO and h is BDDNODEONE:
         return _neg(f)
     # ITE(1, g, h) = g
-    elif f is BDDNODEONE:
+    if f is BDDNODEONE:
         return g
     # ITE(0, g, h) = h
-    elif f is BDDNODEZERO:
+    if f is BDDNODEZERO:
         return h
     # ITE(f, g, g) = g
-    elif g is h:
+    if g is h:
         return g
-    else:
-        # ITE(f, g, h) = ITE(x, ITE(fx', gx', hx'), ITE(fx, gx, hx))
-        root = min(node.root for node in (f, g, h) if node.root > 0)
-        npoint0 = {root: BDDNODEZERO}
-        npoint1 = {root: BDDNODEONE}
-        fv0, gv0, hv0 = [_restrict(node, npoint0) for node in (f, g, h)]
-        fv1, gv1, hv1 = [_restrict(node, npoint1) for node in (f, g, h)]
-        return _bddnode(root, _ite(fv0, gv0, hv0), _ite(fv1, gv1, hv1))
+    # ITE(f, g, h) = ITE(x, ITE(fx', gx', hx'), ITE(fx, gx, hx))
+    root = min(node.root for node in (f, g, h) if node.root > 0)
+    npoint0 = {root: BDDNODEZERO}
+    npoint1 = {root: BDDNODEONE}
+    fv0, gv0, hv0 = [_restrict(node, npoint0) for node in (f, g, h)]
+    fv1, gv1, hv1 = [_restrict(node, npoint1) for node in (f, g, h)]
+    return _bddnode(root, _ite(fv0, gv0, hv0), _ite(fv1, gv1, hv1))
 
 
 def _restrict(node, npoint, cache=None):
@@ -548,13 +542,12 @@ def _find_path(start, end, path=tuple()):
     path = path + (start,)
     if start is end:
         return path
-    else:
-        ret = None
-        if start.lo is not None:
-            ret = _find_path(start.lo, end, path)
-        if ret is None and start.hi is not None:
-            ret = _find_path(start.hi, end, path)
-        return ret
+    ret = None
+    if start.lo is not None:
+        ret = _find_path(start.lo, end, path)
+    if ret is None and start.hi is not None:
+        ret = _find_path(start.hi, end, path)
+    return ret
 
 
 def _iter_all_paths(start, end, rand=False, path=tuple()):

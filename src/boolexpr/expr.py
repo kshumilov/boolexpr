@@ -119,18 +119,19 @@ Interface Classes:
 # foo bar pylint: disable=E1101
 
 import itertools
-import os
-import random
-
+from collections.abc import Callable, Set
 from functools import cached_property
-
-from .parsing.boolexpr import parse
+from typing import Any
 
 from boolexpr import exprnode
+from boolexpr.boolfunc import utils
+from boolexpr.boolfunc.function import Function
+from boolexpr.boolfunc.utils import Point
+from boolexpr.boolfunc.variable import Indices, Names
+from boolexpr.boolfunc.variable import Variable as _Variable
 
-from . import boolfunc
+from .parsing.boolexpr import parse
 from .util import bit_on, clog2
-
 
 # existing Literal references
 _LITS = {}
@@ -139,9 +140,9 @@ _LITS = {}
 _ASSUMPTIONS = set()
 
 
-def _assume2point():
+def _assume2point() -> Point:
     """Convert global assumptions to a point."""
-    point = {}
+    point: Point = {}
     for lit in _ASSUMPTIONS:
         if isinstance(lit, Complement):
             point[~lit] = 0
@@ -150,7 +151,7 @@ def _assume2point():
     return point
 
 
-def exprvar(name, index=None):
+def exprvar(name: Names, index: Indices | None = None) -> "Variable":
     r"""Return a unique Expression variable.
 
     A Boolean *variable* is an abstract numerical quantity that may assume any
@@ -189,7 +190,7 @@ def exprvar(name, index=None):
        For creating arrays of variables with incremental indices,
        use the :func:`pyeda.boolalg.bfarray.exprvars` function.
     """
-    bvar = boolfunc.var(name, index)
+    bvar = _Variable.create(name, index)
     try:
         var = _LITS[bvar.uniqid]
     except KeyError:
@@ -197,7 +198,7 @@ def exprvar(name, index=None):
     return var
 
 
-def _exprcomp(node):
+def _exprcomp(node: exprnode.ExprNode) -> "Expression":
     """Return a unique Expression complement."""
     try:
         comp = _LITS[node.data()]
@@ -206,9 +207,9 @@ def _exprcomp(node):
     return comp
 
 
-_KIND2EXPR = {
-    exprnode.ZERO: lambda node: Zero,
-    exprnode.ONE: lambda node: One,
+_KIND2EXPR: dict[int, Callable[[exprnode.ExprNode], "Expression"]] = {
+    exprnode.ZERO: lambda _: Zero,
+    exprnode.ONE: lambda _: One,
     exprnode.COMP: lambda node: _exprcomp(node),
     exprnode.VAR: lambda node: _LITS[node.data()],
     exprnode.OP_OR: lambda node: OrOp(node),
@@ -221,37 +222,35 @@ _KIND2EXPR = {
 }
 
 
-def _expr(node):
+def _expr(node: exprnode.ExprNode) -> "Expression":
     """Expression constructor that returns unique atomic nodes."""
     return _KIND2EXPR[node.kind()](node)
 
 
-def expr(obj, simplify=True):
+def expr(obj: Any, *, simplify: bool = True) -> "Expression":
     """Convert an arbitrary object into an Expression."""
     if isinstance(obj, Expression):
         return obj
     # False, True, 0, 1
-    elif isinstance(obj, int) and obj in {0, 1}:
+    if isinstance(obj, int) and obj in {0, 1}:
         return _CONSTS[obj]
-    elif isinstance(obj, str):
+    if isinstance(obj, str):
         ast = parse(obj)
         ex = ast2expr(ast)
         if simplify:
             ex = ex.simplify()
         return ex
-    else:
-        return One if bool(obj) else Zero
+    return One if bool(obj) else Zero
 
 
 def ast2expr(ast):
     """Convert an abstract syntax tree to an Expression."""
     if ast[0] == "const":
         return _CONSTS[ast[1]]
-    elif ast[0] == "var":
+    if ast[0] == "var":
         return exprvar(ast[1], ast[2])
-    else:
-        xs = [ast2expr(x) for x in ast[1:]]
-        return ASTOPS[ast[0]](*xs, simplify=False)
+    xs = [ast2expr(x) for x in ast[1:]]
+    return ASTOPS[ast[0]](*xs, simplify=False)
 
 
 def expr2dimacscnf(ex):
@@ -285,21 +284,18 @@ def _expr2sat(ex, litmap):  # pragma: no cover
     """Convert an expression to a DIMACS SAT string."""
     if isinstance(ex, Literal):
         return str(litmap[ex])
-    elif isinstance(ex, NotOp):
+    if isinstance(ex, NotOp):
         return "-(" + _expr2sat(ex.x, litmap) + ")"
-    elif isinstance(ex, OrOp):
+    if isinstance(ex, OrOp):
         return "+(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
-    elif isinstance(ex, AndOp):
+    if isinstance(ex, AndOp):
         return "*(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
-    elif isinstance(ex, XorOp):
+    if isinstance(ex, XorOp):
         return "xor(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
-    elif isinstance(ex, EqualOp):
+    if isinstance(ex, EqualOp):
         return "=(" + " ".join(_expr2sat(x, litmap) for x in ex.xs) + ")"
-    else:
-        fstr = (
-            "expected ex to be a Literal or Not/Or/And/Xor/Equal op, got {0.__name__}"
-        )
-        raise ValueError(fstr.format(type(ex)))
+    fstr = "expected ex to be a Literal or Not/Or/And/Xor/Equal op, got {0.__name__}"
+    raise ValueError(fstr.format(type(ex)))
 
 
 def upoint2exprpoint(upoint):
@@ -571,9 +567,7 @@ def AchillesHeel(*xs, simplify=True):
         fstr = "expected an even number of arguments, got {}"
         raise ValueError(fstr.format(nargs))
     xs = [Expression.box(x).node for x in xs]
-    y = exprnode.and_(
-        *[exprnode.or_(xs[2 * i], xs[2 * i + 1]) for i in range(nargs // 2)]
-    )
+    y = exprnode.and_(*[exprnode.or_(xs[2 * i], xs[2 * i + 1]) for i in range(nargs // 2)])
     if simplify:
         y = y.simplify()
     return _expr(y)
@@ -592,10 +586,8 @@ def Mux(fs, sel, simplify=True):
         fstr = "expected at least {} select bits, got {}"
         raise ValueError(fstr.format(clog2(len(fs)), len(sel)))
 
-    it = boolfunc.iter_terms(sel)
-    y = exprnode.or_(
-        *[exprnode.and_(f.node, *[lit.node for lit in next(it)]) for f in fs]
-    )
+    it = utils.iter_terms(sel)
+    y = exprnode.or_(*[exprnode.and_(f.node, *[lit.node for lit in next(it)]) for f in fs])
     if simplify:
         y = y.simplify()
     return _expr(y)
@@ -622,11 +614,11 @@ class _Clause:
 
     def _lits(self):
         """Return the clause as a frozenset of literals."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _encode_clause(self, litmap):
         """Encode a clause as a frozenset of ints."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class _DNF:
@@ -634,12 +626,12 @@ class _DNF:
 
     def _encode_dnf(self):
         """Encode DNF as a set of frozenset of ints."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @cached_property
     def _cover(self):
         """Return the DNF as a set of frozenset of literals."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class _CNF:
@@ -647,10 +639,10 @@ class _CNF:
 
     def _encode_cnf(self):
         """Encode CNF as a set of frozenset of ints."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
-class Expression(boolfunc.Function):
+class Expression(Function):
     """Boolean function represented by a logical expression
 
     .. seealso::
@@ -663,18 +655,19 @@ class Expression(boolfunc.Function):
     """
 
     ASTOP = NotImplemented
+    node: exprnode.ExprNode
 
-    def __init__(self, node):
+    def __init__(self, node: exprnode.ExprNode) -> None:
         self.node = node
 
-    def __repr__(self):
-        return self.__str__()
+    def __repr__(self) -> str:
+        return str(self)
 
     # Context manager
-    def __enter__(self):
+    def __enter__(self) -> None:
         raise ValueError("expected assumption to be a literal")
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         raise ValueError("expected assumption to be a literal")
 
     # Operators
@@ -708,7 +701,7 @@ class Expression(boolfunc.Function):
 
     # From Function
     @cached_property
-    def support(self):
+    def support(self) -> Set["Variable"]:
         s = set()
         for ex in self.iter_dfs():
             if isinstance(ex, Complement):
@@ -719,10 +712,10 @@ class Expression(boolfunc.Function):
         return frozenset(s)
 
     @cached_property
-    def inputs(self):
+    def inputs(self) -> tuple["Variable", ...]:
         return tuple(sorted(self.support, key=lambda ex: ex.node.data()))
 
-    def restrict(self, point):
+    def restrict(self, point: Point) -> "Expression":
         d = {}
         for key, val in point.items():
             if not isinstance(key, Variable):
@@ -752,13 +745,12 @@ class Expression(boolfunc.Function):
         if isinstance(obj, Expression):
             return obj
         # False, True, 0, 1
-        elif isinstance(obj, int) and obj in {0, 1}:
+        if isinstance(obj, int) and obj in {0, 1}:
             return _CONSTS[obj]
-        elif isinstance(obj, str):
+        if isinstance(obj, str):
             ast = parse(obj)
             return ast2expr(ast)
-        else:
-            return One if bool(obj) else Zero
+        return One if bool(obj) else Zero
 
     # Specific to Expression
 
@@ -813,16 +805,14 @@ class Expression(boolfunc.Function):
         node = self.node.pushdown_not()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     def simplify(self):
         """Return a simplified expression."""
         node = self.node.simplify()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     @property
     def simple(self):
@@ -834,32 +824,28 @@ class Expression(boolfunc.Function):
         node = self.node.to_binary()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     def to_nnf(self):
         """Return an equivalent expression is negation normal form."""
         node = self.node.to_nnf()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     def to_dnf(self):
         """Return an equivalent expression in disjunctive normal form."""
         node = self.node.to_dnf()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     def to_cnf(self):
         """Return an equivalent expression in conjunctive normal form."""
         node = self.node.to_cnf()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     def complete_sum(self):
         """
@@ -869,35 +855,29 @@ class Expression(boolfunc.Function):
         node = self.node.complete_sum()
         if node is self.node:
             return self
-        else:
-            return _expr(node)
+        return _expr(node)
 
     ### End C API ###
 
-    def expand(self, vs=None, conj=False):
+    def expand(self, vs=None, *, conj: bool = False):
         """Return the Shannon expansion with respect to a list of variables."""
         vs = self._expect_vars(vs)
         if vs:
             outer, inner = (And, Or) if conj else (Or, And)
-            terms = [
-                inner(self.restrict(p), *boolfunc.point2term(p, conj))
-                for p in boolfunc.iter_points(vs)
-            ]
+            terms = [inner(self.restrict(p), *utils.point2term(p, conj=conj)) for p in utils.iter_points(vs)]
             if conj:
                 terms = [term for term in terms if term is not One]
             else:
                 terms = [term for term in terms if term is not Zero]
             return outer(*terms, simplify=False)
-        else:
-            return self
+        return self
 
     @property
     def cover(self):
         """Return the DNF expression as a cover of cubes."""
         if self.is_dnf():
             return self._cover
-        else:
-            raise ValueError("expected a DNF expression")
+        raise ValueError("expected a DNF expression")
 
     def encode_inputs(self):
         """Return a compact encoding for input variables."""
@@ -915,15 +895,13 @@ class Expression(boolfunc.Function):
         """Encode as a compact DNF."""
         if self.is_dnf():
             return self._encode_dnf()
-        else:
-            raise ValueError("expected a DNF expression")
+        raise ValueError("expected a DNF expression")
 
     def encode_cnf(self):
         """Encode as a compact CNF."""
         if self.is_cnf():
             return self._encode_cnf()
-        else:
-            raise ValueError("expected a CNF expression")
+        raise ValueError("expected a CNF expression")
 
     def tseitin(self, auxvarname="aux"):
         """Convert the expression to Tseitin's encoding."""
@@ -1089,11 +1067,11 @@ class Complement(Literal):
         return self.node.data()
 
 
-class Variable(boolfunc.Variable, Literal):
+class Variable(_Variable, Literal):
     """Variable Expression"""
 
     def __init__(self, bvar):
-        boolfunc.Variable.__init__(self, bvar.names, bvar.indices)
+        _Variable.__init__(self, bvar.names, bvar.indices)
         Literal.__init__(self, exprnode.lit(bvar.uniqid))
 
 
@@ -1264,9 +1242,7 @@ class NormalForm:
         return self.__str__()
 
     def __str__(self):
-        return "\n".join(
-            " ".join(str(idx) for idx in clause) + " 0" for clause in self.clauses
-        )
+        return "\n".join(" ".join(str(idx) for idx in clause) + " 0" for clause in self.clauses)
 
     @cached_property
     def nclauses(self):
@@ -1275,7 +1251,7 @@ class NormalForm:
 
     def invert(self):
         """Return the inverse normal form expression."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def reduce(self):
         """Reduce to a canonical form."""
@@ -1330,29 +1306,26 @@ class DimacsCNF(ConjNormalForm):
 
 
 def _tseitin(ex, auxvarname, auxvars=None):
-    """
-    Convert a factored expression to a literal, and a list of constraints.
-    """
+    """Convert a factored expression to a literal, and a list of constraints."""
     if isinstance(ex, Literal):
         return ex, []
-    else:
-        if auxvars is None:
-            auxvars = []
+    if auxvars is None:
+        auxvars = []
 
-        lits = []
-        constraints = []
-        for x in ex.xs:
-            lit, subcons = _tseitin(x, auxvarname, auxvars)
-            lits.append(lit)
-            constraints.extend(subcons)
+    lits = []
+    constraints = []
+    for x in ex.xs:
+        lit, subcons = _tseitin(x, auxvarname, auxvars)
+        lits.append(lit)
+        constraints.extend(subcons)
 
-        auxvarindex = len(auxvars)
-        auxvar = exprvar(auxvarname, auxvarindex)
-        auxvars.append(auxvar)
+    auxvarindex = len(auxvars)
+    auxvar = exprvar(auxvarname, auxvarindex)
+    auxvars.append(auxvar)
 
-        f = ASTOPS[ex.ASTOP](*lits)
-        constraints.append((auxvar, f))
-        return auxvar, constraints
+    f = ASTOPS[ex.ASTOP](*lits)
+    constraints.append((auxvar, f))
+    return auxvar, constraints
 
 
 ASTOPS = {
