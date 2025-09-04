@@ -34,7 +34,7 @@ Interface Functions:
 """
 
 
-def bit_on(num: int, bit: int) -> int:
+def bit_on(num: int, bit: int) -> bool:
     """Return the value of a number's bit position.
 
     For example, since :math:`42 = 2^1 + 2^3 + 2^5`,
@@ -43,7 +43,7 @@ def bit_on(num: int, bit: int) -> int:
     >>> [bit_on(42, i) for i in range(clog2(42))]
     [0, 1, 0, 1, 0, 1]
     """
-    return (num >> bit) & 1
+    return bool((num >> bit) & 1)
 
 
 def clog2(num: int) -> int:
@@ -66,6 +66,7 @@ def clog2(num: int) -> int:
     """
     if num < 1:
         raise ValueError("expected num >= 1")
+
     accum, shifter = 0, 1
     while num > shifter:
         shifter <<= 1
@@ -90,6 +91,7 @@ def parity(num: int) -> int:
     """
     if num < 0:
         raise ValueError("expected num >= 0")
+
     par = 0
     while num:
         par ^= num & 1

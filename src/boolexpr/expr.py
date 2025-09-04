@@ -118,20 +118,19 @@ Interface Classes:
 # Disable 'no-member' error, b/c pylint can't look into C extensions
 # foo bar pylint: disable=E1101
 
-import itertools
 from collections.abc import Callable, Set
 from functools import cached_property
-from typing import Any
+from typing import Any, Self
 
 from boolexpr import exprnode
 from boolexpr.boolfunc import utils
 from boolexpr.boolfunc.function import Function
 from boolexpr.boolfunc.utils import Point
-from boolexpr.boolfunc.variable import Indices, Names
-from boolexpr.boolfunc.variable import Variable as _Variable
+from boolexpr.variable import Indices, Names
+from boolexpr.variable import Variable as _Variable
 
+from .math import bit_on
 from .parsing.boolexpr import parse
-from .util import bit_on, clog2
 
 # existing Literal references
 _LITS = {}
@@ -314,299 +313,6 @@ def upoint2exprpoint(upoint):
 
 
 # primitive functions
-def Not(x, simplify=True):
-    """Expression negation operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    x = Expression.box(x).node
-    y = exprnode.not_(x)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Or(*xs, simplify=True):
-    """Expression disjunction (sum, OR) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.or_(*xs)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def And(*xs, simplify=True):
-    """Expression conjunction (product, AND) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.and_(*xs)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-# secondary functions
-def Xor(*xs, simplify=True):
-    """Expression exclusive or (XOR) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.xor(*xs)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Equal(*xs, simplify=True):
-    """Expression equality operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.eq(*xs)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Implies(p, q, simplify=True):
-    """Expression implication operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    p = Expression.box(p).node
-    q = Expression.box(q).node
-    y = exprnode.impl(p, q)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def ITE(s, d1, d0, simplify=True):
-    """Expression If-Then-Else (ITE) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    s = Expression.box(s).node
-    d1 = Expression.box(d1).node
-    d0 = Expression.box(d0).node
-    y = exprnode.ite(s, d1, d0)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-# high order functions
-def Nor(*xs, simplify=True):
-    """Expression NOR (not OR) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.not_(exprnode.or_(*xs))
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Nand(*xs, simplify=True):
-    """Expression NAND (not AND) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.not_(exprnode.and_(*xs))
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Xnor(*xs, simplify=True):
-    """Expression exclusive nor (XNOR) operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.not_(exprnode.xor(*xs))
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Unequal(*xs, simplify=True):
-    """Expression inequality operator
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.not_(exprnode.eq(*xs))
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def OneHot0(*xs, simplify=True, conj=True):
-    """
-    Return an expression that means
-    "at most one input function is true".
-
-    If *simplify* is ``True``, return a simplified expression.
-
-    If *conj* is ``True``, return a CNF.
-    Otherwise, return a DNF.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    terms = []
-    if conj:
-        for x0, x1 in itertools.combinations(xs, 2):
-            terms.append(exprnode.or_(exprnode.not_(x0), exprnode.not_(x1)))
-        y = exprnode.and_(*terms)
-    else:
-        for xs_ in itertools.combinations(xs, len(xs) - 1):
-            terms.append(exprnode.and_(*[exprnode.not_(x) for x in xs_]))
-        y = exprnode.or_(*terms)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def OneHot(*xs, simplify=True, conj=True):
-    """
-    Return an expression that means
-    "exactly one input function is true".
-
-    If *simplify* is ``True``, return a simplified expression.
-
-    If *conj* is ``True``, return a CNF.
-    Otherwise, return a DNF.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    terms = []
-    if conj:
-        for x0, x1 in itertools.combinations(xs, 2):
-            terms.append(exprnode.or_(exprnode.not_(x0), exprnode.not_(x1)))
-        terms.append(exprnode.or_(*xs))
-        y = exprnode.and_(*terms)
-    else:
-        for i, xi in enumerate(xs):
-            zeros = [exprnode.not_(x) for x in xs[:i] + xs[i + 1 :]]
-            terms.append(exprnode.and_(xi, *zeros))
-        y = exprnode.or_(*terms)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def NHot(n, *xs, simplify=True):
-    """
-    Return an expression that means
-    "exactly N input functions are true".
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    if not isinstance(n, int):
-        raise TypeError("expected n to be an int")
-    if not 0 <= n <= len(xs):
-        fstr = "expected 0 <= n <= {}, got {}"
-        raise ValueError(fstr.format(len(xs), n))
-
-    xs = [Expression.box(x).node for x in xs]
-    num = len(xs)
-    terms = []
-    for hot_idxs in itertools.combinations(range(num), n):
-        hot_idxs = set(hot_idxs)
-        xs_ = [xs[i] if i in hot_idxs else exprnode.not_(xs[i]) for i in range(num)]
-        terms.append(exprnode.and_(*xs_))
-    y = exprnode.or_(*terms)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Majority(*xs, simplify=True, conj=False):
-    """
-    Return an expression that means
-    "the majority of input functions are true".
-
-    If *simplify* is ``True``, return a simplified expression.
-
-    If *conj* is ``True``, return a CNF.
-    Otherwise, return a DNF.
-    """
-    xs = [Expression.box(x).node for x in xs]
-    if conj:
-        terms = []
-        for xs_ in itertools.combinations(xs, (len(xs) + 1) // 2):
-            terms.append(exprnode.or_(*xs_))
-        y = exprnode.and_(*terms)
-    else:
-        terms = []
-        for xs_ in itertools.combinations(xs, len(xs) // 2 + 1):
-            terms.append(exprnode.and_(*xs_))
-        y = exprnode.or_(*terms)
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def AchillesHeel(*xs, simplify=True):
-    r"""
-    Return the Achille's Heel function, defined as:
-    :math:`\prod_{i=0}^{n/2-1}{X_{2i} + X_{2i+1}}`.
-
-    If *simplify* is ``True``, return a simplified expression.
-    """
-    nargs = len(xs)
-    if nargs & 1:
-        fstr = "expected an even number of arguments, got {}"
-        raise ValueError(fstr.format(nargs))
-    xs = [Expression.box(x).node for x in xs]
-    y = exprnode.and_(*[exprnode.or_(xs[2 * i], xs[2 * i + 1]) for i in range(nargs // 2)])
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def Mux(fs, sel, simplify=True):
-    """
-    Return an expression that multiplexes a sequence of input functions over a
-    sequence of select functions.
-    """
-    # convert Mux([a, b], x) to Mux([a, b], [x])
-    if isinstance(sel, Expression):
-        sel = [sel]
-
-    if len(sel) < clog2(len(fs)):
-        fstr = "expected at least {} select bits, got {}"
-        raise ValueError(fstr.format(clog2(len(fs)), len(sel)))
-
-    it = utils.iter_terms(sel)
-    y = exprnode.or_(*[exprnode.and_(f.node, *[lit.node for lit in next(it)]) for f in fs])
-    if simplify:
-        y = y.simplify()
-    return _expr(y)
-
-
-def ForAll(vs, ex):  # pragma: no cover
-    """
-    Return an expression that means
-    "for all variables in *vs*, *ex* is true".
-    """
-    return And(*ex.cofactors(vs))
-
-
-def Exists(vs, ex):  # pragma: no cover
-    """
-    Return an expression that means
-    "there exists a variable in *vs* such that *ex* is true".
-    """
-    return Or(*ex.cofactors(vs))
 
 
 class _Clause:
@@ -715,7 +421,7 @@ class Expression(Function):
     def inputs(self) -> tuple["Variable", ...]:
         return tuple(sorted(self.support, key=lambda ex: ex.node.data()))
 
-    def restrict(self, point: Point) -> "Expression":
+    def restrict(self, point: Point) -> Self:
         d = {}
         for key, val in point.items():
             if not isinstance(key, Variable):
@@ -765,7 +471,7 @@ class Expression(Function):
             yield _expr(node)
 
     @cached_property
-    def depth(self):
+    def depth(self) -> int:
         """Return the depth of the expression.
 
         Expression depth is defined recursively:
@@ -777,7 +483,7 @@ class Expression(Function):
         return self.node.depth()
 
     @cached_property
-    def size(self):
+    def size(self) -> int:
         """Return the size of the expression.
 
         1. An atom node (constant or literal) has size one.
@@ -786,15 +492,15 @@ class Expression(Function):
         """
         return self.node.size()
 
-    def is_dnf(self):
+    def is_dnf(self) -> bool:
         """Return True if the expression is in disjunctive normal form."""
         return self.node.is_dnf()
 
-    def is_cnf(self):
+    def is_cnf(self) -> bool:
         """Return True if the expression is in conjunctive normal form."""
         return self.node.is_cnf()
 
-    def pushdown_not(self):
+    def pushdown_not(self) -> Self:
         """Return an expression with NOT operators pushed down thru dual ops.
 
         Specifically, perform the following transformations:
@@ -807,7 +513,7 @@ class Expression(Function):
             return self
         return _expr(node)
 
-    def simplify(self):
+    def simplify(self) -> Self:
         """Return a simplified expression."""
         node = self.node.simplify()
         if node is self.node:
@@ -815,39 +521,39 @@ class Expression(Function):
         return _expr(node)
 
     @property
-    def simple(self):
+    def simple(self) -> bool:
         """Return True if the expression has been simplified."""
         return self.node.simple()
 
-    def to_binary(self):
+    def to_binary(self) -> Self:
         """Convert N-ary operators to binary operators."""
         node = self.node.to_binary()
         if node is self.node:
             return self
         return _expr(node)
 
-    def to_nnf(self):
+    def to_nnf(self) -> Self:
         """Return an equivalent expression is negation normal form."""
         node = self.node.to_nnf()
         if node is self.node:
             return self
         return _expr(node)
 
-    def to_dnf(self):
+    def to_dnf(self) -> Self:
         """Return an equivalent expression in disjunctive normal form."""
         node = self.node.to_dnf()
         if node is self.node:
             return self
         return _expr(node)
 
-    def to_cnf(self):
+    def to_cnf(self) -> Self:
         """Return an equivalent expression in conjunctive normal form."""
         node = self.node.to_cnf()
         if node is self.node:
             return self
         return _expr(node)
 
-    def complete_sum(self):
+    def complete_sum(self) -> Self:
         """
         Return an equivalent DNF expression that includes all prime
         implicants.
@@ -859,18 +565,15 @@ class Expression(Function):
 
     ### End C API ###
 
-    def expand(self, vs=None, *, conj: bool = False):
+    def expand(self, *variables: "Variable", conj: bool = False):
         """Return the Shannon expansion with respect to a list of variables."""
-        vs = self._expect_vars(vs)
-        if vs:
-            outer, inner = (And, Or) if conj else (Or, And)
-            terms = [inner(self.restrict(p), *utils.point2term(p, conj=conj)) for p in utils.iter_points(vs)]
-            if conj:
-                terms = [term for term in terms if term is not One]
-            else:
-                terms = [term for term in terms if term is not Zero]
-            return outer(*terms, simplify=False)
-        return self
+        outer, inner = (And, Or) if conj else (Or, And)
+        terms = [inner(self.restrict(p), *utils.point2term(p, conj=conj)) for p in utils.iter_points(variables)]
+        if conj:
+            terms = [term for term in terms if term is not One]
+        else:
+            terms = [term for term in terms if term is not Zero]
+        return outer(*terms, simplify=False)
 
     @property
     def cover(self):
@@ -912,38 +615,6 @@ class Expression(Function):
         fst = constraints[-1][1]
         rst = [Equal(v, ex).to_cnf() for v, ex in constraints[:-1]]
         return And(fst, *rst)
-
-    def to_dot(self, name="EXPR"):  # pragma: no cover
-        """Convert to DOT language representation."""
-        parts = ["graph", name, "{", "rankdir=BT;"]
-        for ex in self.iter_dfs():
-            exid = ex.node.id()
-            if ex is Zero:
-                parts += [f"n{exid} [label=0,shape=box];"]
-            elif ex is One:
-                parts += [f"n{exid} [label=1,shape=box];"]
-            elif isinstance(ex, Literal):
-                parts += [f'n{exid} [label="{ex}",shape=box];']
-            else:
-                parts += [f"n{exid} [label={ex.ASTOP},shape=circle];"]
-        for ex in self.iter_dfs():
-            exid = ex.node.id()
-            if isinstance(ex, NotOp):
-                parts += [f"n{ex.x.node.id()} -- n{exid};"]
-            elif isinstance(ex, ImpliesOp):
-                p, q = ex.xs
-                parts += [f"n{p.node.id()} -- n{exid} [label=p];"]
-                parts += [f"n{q.node.id()} -- n{exid} [label=q];"]
-            elif isinstance(ex, IfThenElseOp):
-                s, d1, d0 = ex.xs
-                parts += [f"n{s.node.id()} -- n{exid} [label=s];"]
-                parts += [f"n{d1.node.id()} -- n{exid} [label=d1];"]
-                parts += [f"n{d0.node.id()} -- n{exid} [label=d0];"]
-            elif isinstance(ex, NaryOp):
-                for x in ex.xs:
-                    parts += [f"n{x.node.id()} -- n{exid};"]
-        parts.append("}")
-        return " ".join(parts)
 
 
 class Atom(Expression):

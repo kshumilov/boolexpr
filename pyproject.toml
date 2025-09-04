@@ -13,7 +13,10 @@ license-files = [
     "src/exprnode/test/LICENSE",
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "attrs>=25.3.0",
+    "rich>=14.1.0",
+]
 
 [dependency-groups]
 dev = [
@@ -80,6 +83,10 @@ ignore = [
     "D205", # Remove soon
     "N801", # PyEDA conventions
     "D105",
+    "D101",
+    "D102",
+    "D103",
+    "ERA001",
 ]
 
 [tool.ruff.lint.pydocstyle]
