@@ -35,13 +35,81 @@ if TYPE_CHECKING:
     from boolexpr.point import Point
     from boolexpr.variable.variable import Variable
 
+OP_TO_KIND = {
+    ZERO: Kind.Contradiction,
+    ONE: Kind.Tautology,
+    VAR: Kind.Literal,
+    COMP: Kind.Literal,
+    OP_NOT: Kind.Negation,
+    OP_AND: Kind.Conjunction,
+    OP_OR: Kind.Disjunction,
+    OP_XOR: Kind.Parity,
+    OP_EQ: Kind.Equivalence,
+    OP_IMPL: Kind.Implication,
+    OP_ITE: Kind.Decision,
+}
+
+NARY_TO_BUILDER = {
+    Kind.Conjunction: and_,
+    Kind.Disjunction: or_,
+    Kind.Parity: xor,
+    Kind.Equivalence: eq,
+}
+
+OP_TO_BUILDER = {
+    OP_NOT: not_,
+    OP_AND: and_,
+    OP_OR: or_,
+    OP_XOR: xor,
+    OP_EQ: eq,
+    OP_IMPL: impl,
+    OP_ITE: ite,
+}
+
+OP_TO_NAME = {
+    ZERO: "Zero",
+    ONE: "One",
+    VAR: "Var",
+    COMP: "Comp",
+    OP_NOT: "Not",
+    OP_AND: "And",
+    OP_OR: "Or",
+    OP_XOR: "XOR",
+    OP_EQ: "Equiv",
+    OP_IMPL: "Implies",
+    OP_ITE: "ITE",
+}
+
+__all__ = [
+    "get_operands",
+    "get_support",
+    "are_trivially_equivalent",
+    "restrict_by_point",
+    "point_to_term",
+    "point_to_clause",
+    "iter_cofactors",
+    "universal",
+    "existential",
+    "derivative",
+    "shannon",
+    "iter_point_lits",
+    "at_least",
+    "less_than",
+    "exactly",
+    "tseitin_constraints",
+    "OP_TO_KIND",
+    "NARY_TO_BUILDER",
+    "OP_TO_BUILDER",
+    "OP_TO_NAME",
+]
+
 
 def get_operands(node: ExprNode) -> tuple[ExprNode, ...]:
     if node.kind() in OP_TO_BUILDER:
-        operands = node.data()
-        assert isinstance(operands, tuple)
-        assert all(isinstance(op, ExprNode) for op in operands)
-        return operands
+        # operands = node.data()
+        # assert isinstance(operands, tuple)
+        # assert all(isinstance(op, ExprNode) for op in operands)
+        return cast("tuple[ExprNode]", node.data())
     return ()
 
 
@@ -177,49 +245,3 @@ def tseitin_constraints(
             lit_for[curr.id()] = new_var
 
     return lit_for[node.id()], constraints
-
-
-OP_TO_KIND = {
-    ZERO: Kind.Contradiction,
-    ONE: Kind.Tautology,
-    VAR: Kind.Literal,
-    COMP: Kind.Literal,
-    OP_NOT: Kind.Negation,
-    OP_AND: Kind.Conjunction,
-    OP_OR: Kind.Disjunction,
-    OP_XOR: Kind.Parity,
-    OP_EQ: Kind.Equivalence,
-    OP_IMPL: Kind.Implication,
-    OP_ITE: Kind.Decision,
-}
-
-NARY_TO_BUILDER = {
-    Kind.Conjunction: and_,
-    Kind.Disjunction: or_,
-    Kind.Parity: xor,
-    Kind.Equivalence: eq,
-}
-
-OP_TO_BUILDER = {
-    OP_NOT: not_,
-    OP_AND: and_,
-    OP_OR: or_,
-    OP_XOR: xor,
-    OP_EQ: eq,
-    OP_IMPL: impl,
-    OP_ITE: ite,
-}
-
-OP_TO_NAME = {
-    ZERO: "Zero",
-    ONE: "One",
-    VAR: "Var",
-    COMP: "Comp",
-    OP_NOT: "Not",
-    OP_AND: "And",
-    OP_OR: "Or",
-    OP_XOR: "XOR",
-    OP_EQ: "Equiv",
-    OP_IMPL: "Implies",
-    OP_ITE: "ITE",
-}

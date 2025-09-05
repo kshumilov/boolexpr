@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 import attrs
 
@@ -25,6 +25,7 @@ from .node import (
 
 if TYPE_CHECKING:
     from collections.abc import Hashable
+    from typing import Self
 
     from rich.repr import RichReprResult
 
