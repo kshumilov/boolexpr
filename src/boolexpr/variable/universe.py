@@ -41,7 +41,7 @@ class Universe[Label: Hashable]:
         yield from (self.idx_to_data[idx] for idx in idxs)
 
     def __getitem__(self, idx: VariableIndex) -> Variable[Label]:
-        return self.idx_to_data[int(idx)]
+        return self.idx_to_data[idx - self.idx_offset]
 
     def __len__(self) -> int:
         return len(self.label_to_idx)

@@ -15,17 +15,17 @@ __all__ = [
     "Point",
 ]
 
-type Point[Label: Hashable] = Mapping[Variable[Label], bool]
+type Point[L: Hashable] = Mapping[Variable[L], bool]
 
 
-def num2point[L: Hashable](num: int, vs: Sequence[Variable[L]]) -> Point[L]:
+def num2point[L: Hashable](num: int, variables: Sequence[Variable[L]]) -> Point[L]:
     """Convert *num* into a point in an N-dimensional Boolean space.
 
     Parameters
     ----------
     num : int
         The *num* argument is an int in range :math:`[0, 2^N)`.
-    vs : Sequence[Variable]
+    variables : Sequence[Variable]
         The `vs` argument is a sequence of :math:`N` Boolean variables.
         There are :math:`2^N` points in the corresponding Boolean space.
         The dimension number of each variable is its index in the sequence.
@@ -52,8 +52,8 @@ def num2point[L: Hashable](num: int, vs: Sequence[Variable[L]]) -> Point[L]:
        The ``a b c`` column is the binary representation of *num*
        written in little-endian order.
     """
-    num %= 2 ** len(vs)
-    return {v: bit_on(num, i) for i, v in enumerate(vs)}
+    num %= 2 ** len(variables)
+    return {v: bit_on(num, i) for i, v in enumerate(variables)}
 
 
 def iter_points[L: Hashable](vs: Sequence[Variable[L]]) -> Iterator[Point[L]]:

@@ -6,6 +6,7 @@ from boolexpr.point import iter_points
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterator, Mapping
+    from typing import Self
 
     from boolexpr.expression.kind import Kind
     from boolexpr.point import Point
@@ -13,12 +14,18 @@ if TYPE_CHECKING:
     from boolexpr.variable.variable import Variable
 
 
-__all__ = ["Expression", "ExprMap"]
+__all__ = [
+    "Expression",
+    "VarMap",
+    "Invertable",
+    "Conjoinable",
+    "Disjoinable",
+]
 
-type ExprMap[Label: Hashable, Expr] = Mapping[Variable[Label], Expr]
+type VarMap[Label: Hashable, Value] = Mapping[Variable[Label], Value]
 
 
-class Expression[Label: Hashable, Other](Protocol):
+class Expression(Protocol):
     @property
     def kind(self) -> Kind: ...
 
@@ -26,7 +33,7 @@ class Expression[Label: Hashable, Other](Protocol):
     def depth(self) -> int: ...
 
     @property
-    def operands(self) -> tuple[Expression[Label, Other], ...]: ...
+    def operands(self) -> tuple[Self, ...]: ...
 
     @property
     def support(self) -> frozenset[VariableIndex]: ...
@@ -42,20 +49,32 @@ class Expression[Label: Hashable, Other](Protocol):
     def cardinality(self) -> int:
         return 1 << self.degree
 
-    def simplify(self) -> Expression[Label, Other]: ...
+    def simplify(self) -> Self: ...
 
-    def pushdown_not(self) -> Expression[Label, Other]: ...
+    def pushdown_not(self) -> Self: ...
 
-    def restrict(self, point: Point[Label]) -> Expression[Label, Other]: ...
+    def restrict[L: Hashable](self, point: Point[L]) -> Self: ...
 
-    def compose(self, expressions: ExprMap[Label, Other]) -> Expression[Label, Other]: ...
+    def compose[L: Hashable](self, expressions: VarMap[L, Self]) -> Self: ...
 
-    def to_cnf(self) -> Expression[Label, Other]: ...
+    def to_cnf(self) -> Self: ...
 
-    def to_dnf(self) -> Expression[Label, Other]: ...
+    def to_dnf(self) -> Self: ...
 
-    def to_nnf(self) -> Expression[Label, Other]: ...
+    def to_nnf(self) -> Self: ...
 
-    def iter_cofactors(self, *variables: Variable[Label]) -> Iterator[Expression[Label, Other]]:
+    def iter_cofactors[L: Hashable](self, *variables: Variable[L]) -> Iterator[Self]:
         for point in iter_points(variables):
             yield self.restrict(point)
+
+
+class Invertable[Output: Expression](Protocol):
+    def __invert__(self) -> Output: ...
+
+
+class Conjoinable[LHS: Expression, Output: Expression](Protocol):
+    def __and__(self, other: LHS) -> Output: ...
+
+
+class Disjoinable[LHS: Expression, Output: Expression](Protocol):
+    def __or__(self, other: Self) -> Self: ...

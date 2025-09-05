@@ -1,123 +1,78 @@
 from __future__ import annotations
 
-from collections.abc import Hashable
 from functools import cached_property
-from typing import TYPE_CHECKING, Self, cast
+from typing import TYPE_CHECKING, Self
 
 import attrs
 
 from boolexpr import exprnode
 from boolexpr.variable.index import VariableIndex
 
-from .interface import Expression
-from .kind import Kind
+from .interface import Conjoinable, Disjoinable, Expression, Invertable
+from .node import (
+    NARY_TO_BUILDER,
+    OP_TO_KIND,
+    derivative,
+    existential,
+    get_operands,
+    get_support,
+    point_to_clause,
+    point_to_term,
+    restrict_by_point,
+    shannon,
+    universal,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
+
     from rich.repr import RichReprResult
 
     from boolexpr.point import Point
+    from boolexpr.variable.variable import Variable
 
-    from .interface import ExprMap
-
-
-EXPRNODE_KIND_TO_KIND = {
-    exprnode.ZERO: Kind.Contradiction,
-    exprnode.ONE: Kind.Tautology,
-    exprnode.VAR: Kind.Literal,
-    exprnode.COMP: Kind.Literal,
-    exprnode.OP_NOT: Kind.Negation,
-    exprnode.OP_AND: Kind.Conjunction,
-    exprnode.OP_OR: Kind.Disjunction,
-    exprnode.OP_XOR: Kind.Parity,
-    exprnode.OP_EQ: Kind.Equivalence,
-    exprnode.OP_IMPL: Kind.Implication,
-    exprnode.OP_ITE: Kind.Decision,
-}
-
-NARY_KIND_TO_BUILD = {
-    Kind.Conjunction: exprnode.and_,
-    Kind.Disjunction: exprnode.or_,
-    Kind.Parity: exprnode.xor,
-    Kind.Equivalence: exprnode.eq,
-}
+    from .interface import VarMap
+    from .kind import Kind
 
 
-OP_EXPRNODE_KIND_TO_REPR = {
-    exprnode.OP_NOT: "Not",
-    exprnode.OP_AND: "And",
-    exprnode.OP_OR: "Or",
-    exprnode.OP_XOR: "XOR",
-    exprnode.OP_EQ: "Equiv",
-    exprnode.OP_IMPL: "Implies",
-    exprnode.OP_ITE: "ITE",
-}
+type X = exprnode.ExprNode | SimpleExpression
 
 
 @attrs.define(repr=False)
-class SimpleExpression[Label: Hashable](Expression[Label, "SimpleExpression[Label]"]):
+class SimpleExpression(
+    Invertable["SimpleExpression"],
+    Conjoinable["SimpleExpression", "SimpleExpression"],
+    Disjoinable["SimpleExpression", "SimpleExpression"],
+    Expression,
+):
     node: exprnode.ExprNode = attrs.field()
 
-    def __rich_repr__(self) -> RichReprResult:
-        yield "node", self.node.to_ast()
-
-    def __invert__(self) -> SimpleExpression[Label]:
+    def __invert__(self) -> Self:
         return self.__class__(exprnode.not_(self.node).simplify())
 
-    def __and__(self, other: Self | exprnode.ExprNode) -> SimpleExpression[Label]:
-        if isinstance(other, type(self)):
-            return self.__class__(exprnode.and_(self.node, other.node).simplify())
-        if isinstance(other, exprnode.ExprNode):
-            return self.__class__(exprnode.and_(self.node, other).simplify())
-        raise TypeError(f"Invalid input: {other}")
+    def __and__(self, rhs: X) -> Self:
+        node = exprnode.and_(self.node, self.extract_node(rhs)).simplify()
+        return self._new_if_different(node)
 
-    def __or__(self, other: Self | exprnode.ExprNode) -> SimpleExpression[Label]:
-        if isinstance(other, self.__class__):
-            return self.__class__(exprnode.or_(self.node, other.node).simplify())
-        if isinstance(other, exprnode.ExprNode):
-            return self.__class__(exprnode.or_(self.node, other).simplify())
-        raise TypeError(f"Invalid input: {other}")
+    def __or__(self, rhs: X) -> Self:
+        node = exprnode.or_(self.node, self.extract_node(rhs)).simplify()
+        return self._new_if_different(node)
 
-    def __xor__(self, other: Self | exprnode.ExprNode) -> SimpleExpression[Label]:
-        if isinstance(other, self.__class__):
-            return self.__class__(exprnode.xor(self.node, other.node).simplify())
-        if isinstance(other, exprnode.ExprNode):
-            return self.__class__(exprnode.xor(self.node, other).simplify())
-        raise TypeError(f"Invalid input: {other}")
+    def __xor__(self, rhs: X) -> Self:
+        node = exprnode.xor(self.node, self.extract_node(rhs)).simplify()
+        return self._new_if_different(node)
 
     @property
     def kind(self) -> Kind:
-        return EXPRNODE_KIND_TO_KIND[self.node.kind()]
+        return OP_TO_KIND[self.node.kind()]
 
     @cached_property
     def operands(self) -> tuple[Self, ...]:
-        match self.node.kind():
-            case (
-                exprnode.OP_NOT
-                | exprnode.OP_AND
-                | exprnode.OP_OR
-                | exprnode.OP_XOR
-                | exprnode.OP_EQ
-                | exprnode.OP_IMPL
-                | exprnode.OP_ITE
-            ):
-                operands = cast("tuple[exprnode.ExprNode]", self.node.data())
-                return tuple(self.__class__(n) for n in operands)
-        return ()
+        return tuple(self.__class__(op) for op in get_operands(self.node))
 
     @cached_property
     def support(self) -> frozenset[VariableIndex]:
-        input_vars: set[VariableIndex] = set()
-        for child in self.node:
-            match child.kind():
-                case exprnode.VAR:
-                    idx = child.data()
-                    assert isinstance(idx, int)
-                    input_vars.add(VariableIndex(idx))
-                case exprnode.COMP:
-                    idx = child.data()
-                    assert isinstance(idx, int)
-                    input_vars.add(VariableIndex(abs(idx)))
-        return frozenset(input_vars)
+        return frozenset(VariableIndex(abs(idx)) for idx in get_support(self.node))
 
     @cached_property
     def depth(self) -> int:
@@ -128,29 +83,71 @@ class SimpleExpression[Label: Hashable](Expression[Label, "SimpleExpression[Labe
         return self.node.size()
 
     def simplify(self) -> Self:
-        return self.__class__(self.node.simplify())
+        return self._new_if_different(self.node.simplify())
 
-    def pushdown_not(self) -> Self:
-        return self.__class__(self.node.pushdown_not())
+    def pushdown_not(self, /, *, simplify: bool = True) -> Self:
+        node = self.node.pushdown_not()
+        return self._new_if_different(node, simplify=simplify)
 
-    def restrict(self, point: Point[Label]) -> Self:
-        return self.__class__(
-            self.node.restrict(
-                {var.pos_lit: (exprnode.One if polarity else exprnode.Zero) for var, polarity in point.items()}
-            )
-        )
+    def restrict[L: Hashable](self, point: Point[L], /, *, simplify: bool = True) -> Self:
+        node = restrict_by_point(self.node, point)
+        return self._new_if_different(node, simplify=simplify)
 
-    def compose(self, expr_map: ExprMap[Label, SimpleExpression[Label]]) -> Self:
-        return self.__class__(self.node.compose({var.pos_lit: expr.node for var, expr in expr_map.items()}))
+    def compose[L: Hashable](self, var_to_exr: VarMap[L, X], /, *, simplify: bool = True) -> Self:
+        node = self.node.compose({var.pos_lit: self.extract_node(expr) for var, expr in var_to_exr.items()})
+        return self._new_if_different(node, simplify=simplify)
+
+    def consensus[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+        node = universal(self.node, *vs)
+        return self._new_if_different(node, simplify=simplify)
+
+    def forget[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+        node = existential(self.node, *vs)
+        return self._new_if_different(node, simplify=simplify)
+
+    def differentiate[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+        node = derivative(self.node, *vs)
+        return self._new_if_different(node, simplify=simplify)
+
+    def determine[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+        node = shannon(self.node, *vs)
+        return self._new_if_different(node, simplify=simplify)
+
+    def prime_implicants(self) -> Self:
+        node = self.node.complete_sum()
+        return self._new_if_different(node)
 
     def to_cnf(self) -> Self:
-        return self.__class__(self.node.to_cnf())
+        return self._new_if_different(self.node.to_cnf())
 
     def to_dnf(self) -> Self:
-        return self.__class__(self.node.to_dnf())
+        return self._new_if_different(self.node.to_dnf())
 
     def to_nnf(self) -> Self:
-        return self.__class__(self.node.to_nnf())
+        return self._new_if_different(self.node.to_nnf())
+
+    def __rich_repr__(self) -> RichReprResult:
+        yield "node", self.node.to_ast()
+
+    @classmethod
+    def extract_node(cls, other: X) -> exprnode.ExprNode:
+        if isinstance(other, SimpleExpression):
+            return other.node
+        return other
+
+    def _new_if_different(self, new_node: exprnode.ExprNode, /, *, simplify: bool = False) -> Self:
+        if simplify:
+            new_node = new_node.simplify()
+
+        if new_node.id() != self.node.id():
+            return self.__class__(new_node)
+        return self
+
+    @classmethod
+    def from_node(cls, node: exprnode.ExprNode, /, *, simplify: bool = True) -> Self:
+        if simplify:
+            return cls(node.simplify())
+        return cls(node)
 
     @classmethod
     def tautology(cls) -> Self:
@@ -161,37 +158,57 @@ class SimpleExpression[Label: Hashable](Expression[Label, "SimpleExpression[Labe
         return cls(exprnode.Zero)
 
     @classmethod
-    def from_exprnode(cls, node: exprnode.ExprNode, /, *, simplify: bool = True) -> Self:
-        if simplify:
-            return cls(node.simplify())
-
-        return cls(node)
+    def negation(cls, operand: X, /, *, simplify: bool = True) -> Self:
+        node = cls.extract_node(operand)
+        return cls.from_node(exprnode.not_(node), simplify=simplify)
 
     @classmethod
-    def make_nary(cls, kind: Kind, *nodes: exprnode.ExprNode, simplify: bool = True) -> Self:
-        builder = NARY_KIND_TO_BUILD[kind]
-        return cls.from_exprnode(builder(*nodes), simplify=simplify)
+    def conjunction(cls, *operands: X, simplify: bool = True) -> Self:
+        nodes = map(cls.extract_node, operands)
+        return cls.from_node(exprnode.and_(*nodes), simplify=simplify)
 
     @classmethod
-    def make_negated_nary(cls, kind: Kind, *nodes: exprnode.ExprNode, simplify: bool = True) -> Self:
-        builder = NARY_KIND_TO_BUILD[kind]
-        return cls.from_exprnode(exprnode.not_(builder(*nodes)), simplify=simplify)
+    def disjunction(cls, *operands: X, simplify: bool = True) -> Self:
+        nodes = map(cls.extract_node, operands)
+        return cls.from_node(exprnode.or_(*nodes), simplify=simplify)
 
     @classmethod
-    def make_implication(cls, p: exprnode.ExprNode, q: exprnode.ExprNode, /, *, simplify: bool = True) -> Self:
-        return cls.from_exprnode(exprnode.impl(p, q), simplify=simplify)
+    def parity(cls, *operands: X, simplify: bool = True) -> Self:
+        nodes = map(cls.extract_node, operands)
+        return cls.from_node(exprnode.xor(*nodes), simplify=simplify)
 
     @classmethod
-    def make_decision(
-        cls, s: exprnode.ExprNode, d1: exprnode.ExprNode, d0: exprnode.ExprNode, /, *, simplify: bool = True
-    ) -> Self:
-        return cls.from_exprnode(exprnode.ite(s, d1, d0), simplify=simplify)
+    def equivalence(cls, *operands: X, simplify: bool = True) -> Self:
+        nodes = map(cls.extract_node, operands)
+        return cls.from_node(exprnode.eq(*nodes), simplify=simplify)
 
-    # def shannon_decompose(self, *variables: VariableData[Label], conj: bool = True) -> Self:
-    #     match variables:
-    #         case (variable,):
-    #             success = self.node.restrict({variable.pos: exprnode.One})
-    #             failure = self.node.restrict({variable.pos: exprnode.Zero})
-    #             return self.__class__(exprnode.ite(variable.pos, success, failure))
-    #         case (*variables,):
-    #             raise NotImplementedError
+    @classmethod
+    def implication(cls, p: X, q: X, /, *, simplify: bool = True) -> Self:
+        return cls.from_node(exprnode.impl(cls.extract_node(p), cls.extract_node(q)), simplify=simplify)
+
+    @classmethod
+    def decision(cls, s: X, d1: X, d0: X, /, *, simplify: bool = True) -> Self:
+        return cls.from_node(
+            exprnode.ite(cls.extract_node(s), cls.extract_node(d1), cls.extract_node(d0)),
+            simplify=simplify,
+        )
+
+    @classmethod
+    def nary(cls, kind: Kind, *operands: X, simplify: bool = True) -> Self:
+        builder = NARY_TO_BUILDER[kind]
+        nodes = map(cls.extract_node, operands)
+        return cls.from_node(builder(*nodes), simplify=simplify)
+
+    @classmethod
+    def negated_nary(cls, kind: Kind, *operands: X, simplify: bool = True) -> Self:
+        builder = NARY_TO_BUILDER[kind]
+        nodes = map(cls.extract_node, operands)
+        return cls.from_node(exprnode.not_(builder(*nodes)), simplify=simplify)
+
+    @classmethod
+    def term[L: Hashable](cls, point: Point[L], /) -> Self:
+        return cls(point_to_term(point))
+
+    @classmethod
+    def clause[L: Hashable](cls, point: Point[L]) -> Self:
+        return cls(point_to_clause(point))

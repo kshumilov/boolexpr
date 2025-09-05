@@ -1,86 +1,32 @@
-from collections.abc import Hashable
-from typing import Any
+from functools import partial
 
-from boolexpr import exprnode
 from boolexpr.expression.kind import Kind
 from boolexpr.expression.simple import SimpleExpression
-
-type X[Label: Hashable] = exprnode.ExprNode | SimpleExpression[Label]
 
 __all__ = [
     "Not",
     "And",
-    "Nand",
+    "NAnd",
     "Or",
-    "Nor",
+    "NOr",
     "Xor",
-    "Xnor",
+    "XNor",
     "Equal",
     "NotEqual",
     "Imply",
 ]
 
-
-def to_node(x: X[Any]) -> exprnode.ExprNode:  # noqa: N802
-    if isinstance(x, exprnode.ExprNode):
-        return x
-    if isinstance(x, SimpleExpression):
-        return x.node
-    raise TypeError(f"Invalid expression type: {x}")
-
-
-def Not[Label: Hashable](x: X[Label], *, simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    if isinstance(x, SimpleExpression):
-        new_node = exprnode.not_(x.node)
-    elif isinstance(x, exprnode.ExprNode):
-        new_node = exprnode.not_(x)
-    else:
-        raise ValueError(f"Invalid input: {x}")
-
-    return SimpleExpression.from_exprnode(new_node, simplify=simplify)
-
-
-def Or[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_nary(Kind.Disjunction, *map(to_node, xs), simplify=simplify)
-
-
-def And[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_nary(Kind.Conjunction, *map(to_node, xs), simplify=simplify)
-
-
-def Xor[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_nary(Kind.Parity, *map(to_node, xs), simplify=simplify)
-
-
-def Equal[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_nary(Kind.Equivalence, *map(to_node, xs), simplify=simplify)
-
-
-def Imply[Label: Hashable](p: X[Label], q: X[Label], /, *, simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_implication(to_node(p), to_node(q), simplify=simplify)
-
-
-def ITE[Label: Hashable](  # noqa: N802
-    s: X[Label], d1: X[Label], d0: X[Label], /, *, simplify: bool = True
-) -> SimpleExpression[Label]:
-    return SimpleExpression.make_decision(to_node(s), to_node(d1), to_node(d0), simplify=simplify)
-
-
-# high order functions
-def Nor[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_negated_nary(Kind.Disjunction, *map(to_node, xs), simplify=simplify)
-
-
-def Nand[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_negated_nary(Kind.Conjunction, *map(to_node, xs), simplify=simplify)
-
-
-def Xnor[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_negated_nary(Kind.Parity, *map(to_node, xs), simplify=simplify)
-
-
-def NotEqual[Label: Hashable](*xs: X[Label], simplify: bool = True) -> SimpleExpression[Label]:  # noqa: N802
-    return SimpleExpression.make_negated_nary(Kind.Equivalence, *map(to_node, xs), simplify=simplify)
+Not = SimpleExpression.negation
+And = SimpleExpression.conjunction
+NAnd = partial(SimpleExpression.negated_nary, Kind.Conjunction)
+Or = SimpleExpression.disjunction
+NOr = partial(SimpleExpression.negated_nary, Kind.Disjunction)
+Xor = SimpleExpression.parity
+XNor = partial(SimpleExpression.negated_nary, Kind.Parity)
+Equal = SimpleExpression.equivalence
+NotEqual = partial(SimpleExpression.negated_nary, Kind.Equivalence)
+Imply = SimpleExpression.implication
+ITE = SimpleExpression.decision
 
 
 # def AtMostOne(*xs, simplify=True, conj=True):

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, Self, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from typing import Any, Self, SupportsInt
 
 __all__ = [
     "VariableIdentifier",
@@ -17,32 +18,18 @@ type Names = tuple[str, ...]
 type Indices = tuple[int, ...]
 
 
-class ConvertibleToStr(Protocol):
-    """A protocol for objects that can be converted to an integer via __int__."""
-
-    def __str__(self) -> str: ...
-
-
-def standardize_name[T: ConvertibleToStr](raw_name: T | Sequence[T]) -> Names:
+def standardize_name[T: Any](raw_name: T | Sequence[T]) -> Names:
     match raw_name:
         case (*names,):
             return tuple(map(str, names))
         case _:
-            return (str(cast("T", raw_name)),)
+            return (str(raw_name),)
 
 
-class ConvertibleToInt(Protocol):
-    """A protocol for objects that can be converted to an integer via __int__."""
-
-    def __int__(self) -> int: ...
-
-
-def standardize_indices[T: ConvertibleToInt](raw_idx: T | Sequence[T]) -> Indices:
-    match raw_idx:
-        case [*indices]:
-            return tuple(map(int, indices))
-        case _:
-            return (int(cast("T", raw_idx)),)
+def standardize_indices[T: SupportsInt](indices: T | Sequence[T]) -> tuple[int, ...]:
+    if isinstance(indices, Sequence) and not isinstance(indices, str | bytes | bytearray):
+        return tuple(int(i) for i in indices)
+    return (int(indices),)
 
 
 @define(frozen=True, order=False, hash=True)

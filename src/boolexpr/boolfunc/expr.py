@@ -129,8 +129,8 @@ from boolexpr.boolfunc.utils import Point
 from boolexpr.variable import Indices, Names
 from boolexpr.variable import Variable as _Variable
 
-from .math import bit_on
-from .parsing.boolexpr import parse
+from boolexpr.math import bit_on
+from boolexpr.parsing.boolexpr import parse
 
 # existing Literal references
 _LITS = {}
@@ -611,7 +611,19 @@ class Expression(Function):
         if self.is_cnf():
             return self
 
-        _, constraints = _tseitin(self.to_nnf(), auxvarname)
+        # Provide a zero-arg supplier for fresh auxiliary variables
+        counter = 0
+
+        def _new_var():
+            nonlocal counter
+            v = exprvar(auxvarname, counter)
+            counter += 1
+            return v
+
+        top_lit, constraints = _tseitin(self.to_nnf(), _new_var)
+        if not constraints:
+            # Literal-only expression
+            return top_lit
         fst = constraints[-1][1]
         rst = [Equal(v, ex).to_cnf() for v, ex in constraints[:-1]]
         return And(fst, *rst)
@@ -976,27 +988,92 @@ class DimacsCNF(ConjNormalForm):
         return f"p cnf {self.nvars} {self.nclauses}\n{formula}"
 
 
-def _tseitin(ex, auxvarname, auxvars=None):
-    """Convert a factored expression to a literal, and a list of constraints."""
+def _tseitin(ex, new_var):
+    """Convert an expression into a fresh literal plus Tseitin constraints.
+
+    This is a helper used by Expression.tseitin. It walks the expression tree
+    bottom-up and, for every non-literal subexpression, introduces a fresh
+    auxiliary variable that stands for that subexpression. It returns:
+      - a Literal that represents the input expression (either the input
+        literal itself, or the last auxiliary variable created), and
+      - a list of constraints of the form (aux_var, subexpr), where subexpr is
+        rebuilt from already-converted child literals.
+
+    Contract and invariants:
+    - If ex is a Literal, return (ex, []) and do not allocate auxiliaries.
+    - Otherwise, recursively convert children to literals L1..Ln, allocate a
+      fresh aux variable v = new_var(), and append the constraint
+      (v, ASTOPS[ex.ASTOP](*L1..Ln)). Return (v, constraints).
+    - The constraints list is ordered in post-order (children before parent);
+      therefore, the last item corresponds to the top-most subexpression.
+    - The returned literal is equal to constraints[-1][0] whenever ex is not a
+      Literal.
+
+    Intended usage:
+    - Expression.tseitin calls this on ex.to_nnf(). It then forms a CNF by
+      taking the last constraint's right-hand side (the rebuilt top formula)
+      and conjoining Equal(v, subexpr) for all prior constraints, which avoids
+      introducing a top-level equivalence.
+
+    Parameters
+    - ex: Expression | Literal
+        The (typically NNF/factored) expression to encode. Literals are passed
+        through unchanged.
+    - new_var: Callable[[], Variable]
+        Zero-argument callable that returns a fresh auxiliary Variable each
+        time it is invoked.
+
+    Returns
+    - lit: Literal
+        A literal representing ex.
+    - constraints: list[tuple[Variable, Expression]]
+        Post-order list of equivalence constraints. The conjunction of
+        Equal(v, expr) over this list (optionally excluding the final pair if
+        you use the top expression directly) yields a CNF-equivalent formula
+        after pushing to CNF.
+
+    Complexity
+    - Runs in O(|ex|) time and introduces at most one auxiliary per non-literal
+      node. The size of the constraints list equals the number of non-literal
+      nodes in ex.
+
+    Example
+    - For ex = Or(And(x, y), z):
+        _tseitin(ex, new_var) -> (
+          t1,
+          [ (t0, And(x, y)), (t1, Or(t0, z)) ]
+        )
+      Expression.tseitin then returns And(Or(t0, z), Equal(t0, And(x, y))) in
+      CNF after normalization.
+    """
+    # Fast path: literals don't need encoding
     if isinstance(ex, Literal):
         return ex, []
-    if auxvars is None:
-        auxvars = []
 
-    lits = []
+    # Iterative post-order traversal using an explicit stack
     constraints = []
-    for x in ex.xs:
-        lit, subcons = _tseitin(x, auxvarname, auxvars)
-        lits.append(lit)
-        constraints.extend(subcons)
+    lit_for = {}  # map from expr.node to the literal representing it
+    stack = [(ex, False)]
 
-    auxvarindex = len(auxvars)
-    auxvar = exprvar(auxvarname, auxvarindex)
-    auxvars.append(auxvar)
+    while stack:
+        cur, visited = stack.pop()
+        if isinstance(cur, Literal):
+            lit_for[cur.node] = cur
+            continue
+        if not visited:
+            stack.append((cur, True))
+            # push children in reverse to process left-to-right on pop
+            for child in reversed(cur.xs):
+                stack.append((child, False))
+        else:
+            # All children processed: build constraint for this node
+            child_lits = tuple(lit_for[ch.node] for ch in cur.xs)
+            v = new_var()
+            f = ASTOPS[cur.ASTOP](*child_lits)
+            constraints.append((v, f))
+            lit_for[cur.node] = v
 
-    f = ASTOPS[ex.ASTOP](*lits)
-    constraints.append((auxvar, f))
-    return auxvar, constraints
+    return lit_for[ex.node], constraints
 
 
 ASTOPS = {

@@ -43,7 +43,7 @@ class Variable[Label: Hashable]:
 
     @property
     def neg_lit(self) -> exprnode.ExprNode:
-        return self.literals[1]
+        return self.literals[0]
 
     @classmethod
     def create(cls, label: Label, idx: int) -> Self:

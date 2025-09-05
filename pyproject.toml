@@ -26,11 +26,27 @@ dev = [
     "ruff>=0.12.11",
 ]
 
+[tool.mypy]
+python_version = "3.13"
+strict = true
+mypy_path = ["src"]
+exclude = ["^src/boolexpr/(boolfunc,parsing)($|/)"]
+
+[[tool.mypy.overrides]]
+module = ["boolexpr.boolfunc", "boolexpr.boolfunc.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["boolexpr.parsing", "boolexpr.parsing.*"]
+ignore_errors = true
+
 [tool.ruff]
 line-length = 120
 indent-width = 4
 exclude = [
     "ipynb",
+    'src/boolexpr/parsing',
+    'src/boolexpr/boolfunc',
 ]
 
 [tool.ruff.lint]
