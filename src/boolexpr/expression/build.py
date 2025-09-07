@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import partial
 
 from boolexpr.expression.kind import Kind
@@ -15,6 +17,7 @@ __all__ = [
     "NotEqual",
     "Imply",
 ]
+
 
 Not = SimpleExpression.negation
 And = SimpleExpression.conjunction

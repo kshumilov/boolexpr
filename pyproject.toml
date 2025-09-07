@@ -15,6 +15,7 @@ license-files = [
 requires-python = ">=3.13"
 dependencies = [
     "attrs>=25.3.0",
+    "lark[interegular]>=1.2.2",
     "rich>=14.1.0",
 ]
 
@@ -22,7 +23,9 @@ dependencies = [
 dev = [
     "commitizen>=4.8.3",
     "ipython>=9.4.0",
+    "jupyterlab>=4.4.7",
     "mypy>=1.17.1",
+    "rich[jupyter]>=14.1.0",
     "ruff>=0.12.11",
 ]
 

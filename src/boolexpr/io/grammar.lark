@@ -1,0 +1,99 @@
+%import common.CNAME
+
+%import common.WS
+%ignore WS
+%import common.SH_COMMENT
+%ignore SH_COMMENT
+
+// start: (assignment | annotations)*
+start: (assignment)*
+
+// These tokens should throw an error during parsing because they are too confusing. eg: F seems like it should be a valid basic event, but it could be interpretedas false.
+BANNED.100: "T" | "F"
+
+?name: BANNED -> banned | CNAME
+
+_EQUIV.50: "<->" | "EQUIV"
+_IMPLIES.50: "->" | "IMPLY"
+_OR.50: "|" | "OR"
+_XOR.50: "^" | "XOR"
+_AND.50: "&" | "AND"
+_NOT.50: "-" | "!" | "~" | "NOT"
+
+CAT.50: ">^.^<"
+KOALA.50: "@( * O * )@"
+true.50: "TRUE" | "1" | CAT
+false.50: "FALSE" | "0" | KOALA
+
+literal: true | false
+// Assignment now uses the top-level expression rule
+assignment: name ":=" expression ";"
+
+_infix{op, atom}: atom (op atom)+
+
+// 1. Expression Hierarchy for Precedence
+// The entry-point for any expression starts at the lowest-priority expression
+// Each expression binds to its operator or a single instance of its subunit
+// and then is dropped by in-lining.
+?expression: equiv_expr
+
+// 2. Lowest Precedence: OR ("|")
+?equiv_expr: _infix{_EQUIV, implies_expr} -> equivalence
+           | implies_expr
+
+?implies_expr: _infix{_IMPLIES, or_expr} -> implication
+           | or_expr
+
+// 2. Lowest Precedence: OR ("|")
+?or_expr: _infix{_OR, xor_expr} -> disjunction
+        | xor_expr
+
+// 3. Medium Precedence: XOR ("^")
+?xor_expr: _infix{_XOR, and_expr} -> parity
+         | and_expr
+
+// 4. Highest Precedence: AND ("&")
+// This rule consumes basic terms
+?and_expr:_infix{_AND, term} -> conjunction
+         | term
+
+// 5. Basic Operands (Terms)
+// A term is the highest-precedence element
+?term: name
+     | literal
+     | negation
+     | prefix_operation
+     | "(" expression ")" // Parentheses reset the precedence back to the top level
+
+negation: _NOT term -> complement
+
+// Python-style slices for Cardinality Gates
+// Inclusive start, Exclusive end
+// All numbers must be positive integers
+// The set of selected cardinalities:
+// C_i = (start + i * step) < end for i - non-negative integer
+%import common.INT
+
+slice_start: INT
+slice_end: INT
+slice_step: INT
+slice: "[" slice_start? (":" slice_end? (":" slice_step)?)? "]"
+
+// Prefix operations are treated as a basic term
+_nary_prefix{op}: op "{" term term+ "}"
+?prefix_operation: _nary_prefix{_AND} -> conjunction
+                 | _nary_prefix{_OR} -> disjunction
+                 | _nary_prefix{_XOR} -> parity
+                 | _nary_prefix{slice} -> cardinality
+                 | _nary_prefix{_IMPLIES} -> implication
+                 | _nary_prefix{_EQUIV} -> equivalence
+
+
+// pseudo-json annotation
+//%import common.SIGNED_NUMBER
+//%import common.ESCAPED_STRING
+//
+//annotations: name "<=" "{" [note ("," note)*] "}" ";"
+//key: CNAME | ESCAPED_STRING
+//value: ESCAPED_STRING | SIGNED_NUMBER
+//note : key ":" value

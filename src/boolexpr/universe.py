@@ -1,15 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from attrs import define, field, validators
 
-from .variable import Variable
+from boolexpr.io.parser import get_expr_parser
+from boolexpr.io.visualization.expression import build_expression_tree
+from boolexpr.variable.variable import Variable
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterator
 
-    from .index import VariableIndex
+    from rich import tree
+
+    from boolexpr.expression.simple import SimpleExpression
+    from boolexpr.io.parser import SimpleExpressionParser
+    from boolexpr.variable.index import VariableIndex
+
 
 __all__ = [
     "Universe",
@@ -45,6 +52,12 @@ class Universe[Label: Hashable]:
 
     def __len__(self) -> int:
         return len(self.label_to_idx)
+
+    def get_parser(self, **kwargs: Any) -> SimpleExpressionParser:
+        return get_expr_parser(self, **kwargs)
+
+    def show(self, expression: SimpleExpression, **kwargs: Any) -> tree.Tree:
+        return build_expression_tree(expression.node, idx_to_label=lambda idx: str(self[idx].label), **kwargs)
 
     def _assert_valid(self) -> None:
         assert self.idx_offset > 0

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from boolexpr.point import Point
     from boolexpr.variable.variable import Variable
 
-OP_TO_KIND = {
+NODE_KIND_TO_KIND = {
     ZERO: Kind.Contradiction,
     ONE: Kind.Tautology,
     VAR: Kind.Literal,
@@ -56,7 +56,7 @@ NARY_TO_BUILDER = {
     Kind.Equivalence: eq,
 }
 
-OP_TO_BUILDER = {
+NODE_OP_TO_BUILDER = {
     OP_NOT: not_,
     OP_AND: and_,
     OP_OR: or_,
@@ -66,19 +66,9 @@ OP_TO_BUILDER = {
     OP_ITE: ite,
 }
 
-OP_TO_NAME = {
-    ZERO: "Zero",
-    ONE: "One",
-    VAR: "Var",
-    COMP: "Comp",
-    OP_NOT: "Not",
-    OP_AND: "And",
-    OP_OR: "Or",
-    OP_XOR: "XOR",
-    OP_EQ: "Equiv",
-    OP_IMPL: "Implies",
-    OP_ITE: "ITE",
-}
+NODE_LITERALS = frozenset({VAR, COMP})
+NODE_CONSTANTS = frozenset({ZERO, ONE})
+NODE_OPS = frozenset({OP_NOT, OP_AND, OP_OR, OP_XOR, OP_EQ, OP_IMPL, OP_ITE})
 
 __all__ = [
     "get_operands",
@@ -97,19 +87,20 @@ __all__ = [
     "less_than",
     "exactly",
     "tseitin_constraints",
-    "OP_TO_KIND",
+    "NODE_KIND_TO_KIND",
     "NARY_TO_BUILDER",
-    "OP_TO_BUILDER",
-    "OP_TO_NAME",
+    "NODE_OP_TO_BUILDER",
+    "NODE_LITERALS",
+    "NODE_CONSTANTS",
 ]
 
 
 def get_operands(node: ExprNode) -> tuple[ExprNode, ...]:
-    if node.kind() in OP_TO_BUILDER:
+    if node.kind() in NODE_OP_TO_BUILDER:
         # operands = node.data()
         # assert isinstance(operands, tuple)
         # assert all(isinstance(op, ExprNode) for op in operands)
-        return cast("tuple[ExprNode]", node.data())
+        return cast("tuple[ExprNode, ...]", node.data())
     return ()
 
 
@@ -239,7 +230,7 @@ def tseitin_constraints(
                 stack.append((child, False))
         else:
             new_var = get_new_var()
-            builder = cast("Callable[..., ExprNode]", OP_TO_BUILDER[curr.kind()])
+            builder = cast("Callable[..., ExprNode]", NODE_OP_TO_BUILDER[curr.kind()])
             constraint = builder(*(lit_for[c.id()] for c in cast("tuple[ExprNode, ...]", curr.data())))
             constraints.append((new_var, constraint))
             lit_for[curr.id()] = new_var

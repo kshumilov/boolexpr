@@ -11,7 +11,7 @@ from boolexpr.variable.index import VariableIndex
 from .interface import Conjoinable, Disjoinable, Expression, Invertable
 from .node import (
     NARY_TO_BUILDER,
-    OP_TO_KIND,
+    NODE_KIND_TO_KIND,
     derivative,
     existential,
     get_operands,
@@ -65,7 +65,7 @@ class SimpleExpression(
 
     @property
     def kind(self) -> Kind:
-        return OP_TO_KIND[self.node.kind()]
+        return NODE_KIND_TO_KIND[self.node.kind()]
 
     @cached_property
     def operands(self) -> tuple[Self, ...]:
