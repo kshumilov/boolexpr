@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "build_expression_tree",
+    "build_expression_forest",
 ]
 
 
@@ -124,3 +125,31 @@ def build_expression_tree(
         idx_to_label=idx_to_label,
         not_char=not_char,
     )
+
+
+def build_expression_forest(
+    expressions: Iterable[tuple[exprnode.ExprNode, exprnode.ExprNode]],
+    *,
+    title: str = "Expressions",
+    inline_literals: bool = True,
+    idx_to_label: Callable[[VariableIndex], str] | None = None,
+    not_char: str = "¬",
+) -> Tree:
+    forest = Tree(title)
+
+    if idx_to_label is None:
+        idx_to_label = str
+
+    for variable, expression in expressions:
+        subtree = build_expression_tree(
+            expression,
+            parent=forest,
+            inline_literals=inline_literals,
+            idx_to_label=idx_to_label,
+            not_char=not_char,
+        )
+
+        label = get_literal_label(variable, idx_to_label=idx_to_label, negation_char=not_char)
+        subtree.label = f"{label} := {subtree.label}"
+
+    return forest

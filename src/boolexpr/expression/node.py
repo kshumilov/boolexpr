@@ -30,7 +30,7 @@ from boolexpr.exprnode import (
 from boolexpr.point import iter_points
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Iterator
+    from collections.abc import Callable, Iterator
 
     from boolexpr.point import Point
     from boolexpr.variable.variable import Variable
@@ -127,40 +127,40 @@ def are_trivially_equivalent(lhs: ExprNode, rhs: ExprNode) -> bool:
     return lhs.id() == rhs.id()
 
 
-def restrict_by_point[L: Hashable](node: ExprNode, point: Point[L]) -> ExprNode:
+def restrict_by_point(node: ExprNode, point: Point[Variable]) -> ExprNode:
     return node.restrict({var.pos_lit: (One if polarity else Zero) for var, polarity in point.items()})
 
 
-def point_to_term[L: Hashable](point: Point[L]) -> ExprNode:
+def point_to_term(point: Point[Variable]) -> ExprNode:
     return and_(*iter_point_lits(point))
 
 
-def point_to_clause[L: Hashable](point: Point[L]) -> ExprNode:
+def point_to_clause(point: Point[Variable]) -> ExprNode:
     return or_(*iter_point_lits(point))
 
 
-def iter_cofactors[L: Hashable](node: ExprNode, *variables: Variable[L]) -> Iterator[ExprNode]:
+def iter_cofactors(node: ExprNode, *variables: Variable) -> Iterator[ExprNode]:
     for point in iter_points(variables):
         yield restrict_by_point(node, point)
 
 
-def universal[L: Hashable](node: ExprNode, *variables: Variable[L]) -> ExprNode:
+def universal(node: ExprNode, *variables: Variable) -> ExprNode:
     return and_(*iter_cofactors(node, *variables))
 
 
-def existential[L: Hashable](node: ExprNode, *variables: Variable[L]) -> ExprNode:
+def existential(node: ExprNode, *variables: Variable) -> ExprNode:
     return or_(*iter_cofactors(node, *variables))
 
 
-def derivative[L: Hashable](node: ExprNode, *variables: Variable[L]) -> ExprNode:
+def derivative(node: ExprNode, *variables: Variable) -> ExprNode:
     return xor(*iter_cofactors(node, *variables))
 
 
-def shannon[L: Hashable](node: ExprNode, *variables: Variable[L]) -> ExprNode:
+def shannon(node: ExprNode, *variables: Variable) -> ExprNode:
     return or_(*(and_(point_to_term(p), restrict_by_point(node, p)) for p in iter_points(variables)))
 
 
-def iter_point_lits[L: Hashable](point: Point[L]) -> Iterator[ExprNode]:
+def iter_point_lits(point: Point[Variable]) -> Iterator[ExprNode]:
     yield from (+v if p else -v for v, p in point.items())
 
 
@@ -229,9 +229,10 @@ def tseitin_constraints(
             for child in reversed(cast("tuple[ExprNode,...]", curr.data())):
                 stack.append((child, False))
         else:
-            new_var = get_new_var()
             builder = cast("Callable[..., ExprNode]", NODE_OP_TO_BUILDER[curr.kind()])
             constraint = builder(*(lit_for[c.id()] for c in cast("tuple[ExprNode, ...]", curr.data())))
+
+            new_var = get_new_var()
             constraints.append((new_var, constraint))
             lit_for[curr.id()] = new_var
 

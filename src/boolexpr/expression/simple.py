@@ -24,7 +24,6 @@ from .node import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable
     from typing import Self
 
     from rich.repr import RichReprResult
@@ -35,11 +34,15 @@ if TYPE_CHECKING:
     from .interface import VarMap
     from .kind import Kind
 
+__all__ = [
+    "SimpleExpression",
+    "X",
+]
 
 type X = exprnode.ExprNode | SimpleExpression
 
 
-@attrs.define(repr=False)
+@attrs.define(repr=False, order=False, eq=False)
 class SimpleExpression(
     Invertable["SimpleExpression"],
     Conjoinable["SimpleExpression", "SimpleExpression"],
@@ -90,27 +93,27 @@ class SimpleExpression(
         node = self.node.pushdown_not()
         return self._new_if_different(node, simplify=simplify)
 
-    def restrict[L: Hashable](self, point: Point[L], /, *, simplify: bool = True) -> Self:
+    def restrict(self, point: Point[Variable], /, *, simplify: bool = True) -> Self:
         node = restrict_by_point(self.node, point)
         return self._new_if_different(node, simplify=simplify)
 
-    def compose[L: Hashable](self, var_to_exr: VarMap[L, X], /, *, simplify: bool = True) -> Self:
+    def compose(self, var_to_exr: VarMap[X], /, *, simplify: bool = True) -> Self:
         node = self.node.compose({var.pos_lit: self.extract_node(expr) for var, expr in var_to_exr.items()})
         return self._new_if_different(node, simplify=simplify)
 
-    def consensus[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+    def consensus(self, *vs: Variable, simplify: bool = True) -> Self:
         node = universal(self.node, *vs)
         return self._new_if_different(node, simplify=simplify)
 
-    def forget[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+    def forget(self, *vs: Variable, simplify: bool = True) -> Self:
         node = existential(self.node, *vs)
         return self._new_if_different(node, simplify=simplify)
 
-    def differentiate[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+    def differentiate(self, *vs: Variable, simplify: bool = True) -> Self:
         node = derivative(self.node, *vs)
         return self._new_if_different(node, simplify=simplify)
 
-    def determine[L: Hashable](self, *vs: Variable[L], simplify: bool = True) -> Self:
+    def determine(self, *vs: Variable, simplify: bool = True) -> Self:
         node = shannon(self.node, *vs)
         return self._new_if_different(node, simplify=simplify)
 
@@ -207,9 +210,9 @@ class SimpleExpression(
         return cls.from_node(exprnode.not_(builder(*nodes)), simplify=simplify)
 
     @classmethod
-    def term[L: Hashable](cls, point: Point[L], /) -> Self:
+    def term(cls, point: Point[Variable], /) -> Self:
         return cls(point_to_term(point))
 
     @classmethod
-    def clause[L: Hashable](cls, point: Point[L]) -> Self:
+    def clause(cls, point: Point[Variable]) -> Self:
         return cls(point_to_clause(point))

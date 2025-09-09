@@ -7,7 +7,6 @@ from boolexpr.math import bit_on
 if TYPE_CHECKING:
     from collections.abc import Hashable, Iterator, Mapping, Sequence
 
-    from boolexpr.variable.variable import Variable
 
 __all__ = [
     "num2point",
@@ -15,10 +14,10 @@ __all__ = [
     "Point",
 ]
 
-type Point[L: Hashable] = Mapping[Variable[L], bool]
+type Point[V: Hashable] = Mapping[V, bool]
 
 
-def num2point[L: Hashable](num: int, variables: Sequence[Variable[L]]) -> Point[L]:
+def num2point[V: Hashable](num: int, variables: Sequence[V]) -> Point[V]:
     """Convert *num* into a point in an N-dimensional Boolean space.
 
     Parameters
@@ -56,7 +55,7 @@ def num2point[L: Hashable](num: int, variables: Sequence[Variable[L]]) -> Point[
     return {v: bit_on(num, i) for i, v in enumerate(variables)}
 
 
-def iter_points[L: Hashable](vs: Sequence[Variable[L]]) -> Iterator[Point[L]]:
+def iter_points[V: Hashable](vs: Sequence[V]) -> Iterator[Point[V]]:
     """Iterate through all points in an N-dimensional Boolean space.
 
     The *vs* argument is a sequence of :math:`N` Boolean variables.

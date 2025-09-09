@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from attrs import define, field, validators
 
 if TYPE_CHECKING:
-    from typing import Any, Self, SupportsInt
+    from typing import Self, SupportsInt
 
 __all__ = [
     "VariableIdentifier",
@@ -18,15 +18,17 @@ type Names = tuple[str, ...]
 type Indices = tuple[int, ...]
 
 
-def standardize_name[T: Any](raw_name: T | Sequence[T]) -> Names:
-    match raw_name:
-        case (*names,):
-            return tuple(map(str, names))
-        case _:
-            return (str(raw_name),)
+def standardize_name(raw_name: object) -> Names:
+    if isinstance(raw_name, str | bytes | bytearray):
+        return tuple(
+            str(raw_name),
+        )
+    if isinstance(raw_name, Sequence):
+        return tuple(str(n) for n in raw_name)
+    return (str(raw_name),)
 
 
-def standardize_indices[T: SupportsInt](indices: T | Sequence[T]) -> tuple[int, ...]:
+def standardize_indices(indices: SupportsInt | Sequence[SupportsInt]) -> tuple[int, ...]:
     if isinstance(indices, Sequence) and not isinstance(indices, str | bytes | bytearray):
         return tuple(int(i) for i in indices)
     return (int(indices),)
@@ -59,10 +61,27 @@ class VariableIdentifier:
             return f"{self.qual_name}[{suffix}]"
         return self.qual_name
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, VariableIdentifier | str):
+            return NotImplemented
+        if isinstance(other, str):
+            return str(self) == other
+        return (self.names, self.indices) == (other.names, other.indices)
+
     def __lt__(self, other: Self) -> bool:
         if self.names == other.names:
             return self.indices < other.indices
         return self.names < other.names
+
+    def __hash__(self) -> int:
+        if self.indices:
+            return hash((self.names, self.indices))
+
+        match self.names:
+            case (name,):
+                return hash(name)
+            case _:
+                return hash(self.names)
 
     @property
     def inner_name(self) -> str:

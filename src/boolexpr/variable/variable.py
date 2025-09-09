@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Self
 from attrs import define, field, validators
 
 from boolexpr import exprnode
+from boolexpr.expression.simple import SimpleExpression
 
 from .index import VariableIndex
 
@@ -17,9 +18,9 @@ __all__ = [
 
 
 @define(frozen=True, order=False, hash=True)
-class Variable[Label: Hashable]:
-    label: Label = field(hash=True)
-    idx: VariableIndex = field(hash=False)
+class Variable:
+    label: Hashable = field(hash=True, eq=True)
+    idx: VariableIndex = field(hash=False, eq=False)
 
     literals: tuple[exprnode.ExprNode, exprnode.ExprNode] = field(
         validator=validators.and_(
@@ -29,7 +30,14 @@ class Variable[Label: Hashable]:
         ),
         repr=False,
         hash=False,
+        eq=False,
     )
+
+    def to_node(self, *, polarity: bool = True) -> exprnode.ExprNode:
+        return self.literals[polarity]
+
+    def to_lit(self, *, polarity: bool = True) -> SimpleExpression:
+        return SimpleExpression(self.literals[polarity])
 
     def __pos__(self) -> exprnode.ExprNode:
         return self.literals[1]
@@ -46,7 +54,7 @@ class Variable[Label: Hashable]:
         return self.literals[0]
 
     @classmethod
-    def create(cls, label: Label, idx: int) -> Self:
+    def create(cls, label: Hashable, idx: int) -> Self:
         assert idx > 0
         return cls(
             label=label,

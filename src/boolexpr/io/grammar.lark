@@ -11,23 +11,28 @@ start: (assignment)*
 // These tokens should throw an error during parsing because they are too confusing. eg: F seems like it should be a valid basic event, but it could be interpretedas false.
 BANNED.100: "T" | "F"
 
-?name: BANNED -> banned | CNAME
+?name: BANNED -> banned | identifier
 
+identifier: prefix index?
+prefix: CNAME ("." CNAME)*
+index: "[" INT ("," INT)* "]"
+
+_NOT.50: "-" | "!" | "~" | "not" | "NOT"
+_AND.50: "*" | "&" | "⋀" | "all" | "ALL" | "and" | "AND"
+_OR.50: "+" | "|" | "⋁" | "any" | "ANY" | "or" | "OR"
+_XOR.50: "^" | "<+>" | "xor" | "XOR"
 _EQUIV.50: "<->" | "EQUIV"
 _IMPLIES.50: "->" | "IMPLY"
-_OR.50: "|" | "OR"
-_XOR.50: "^" | "XOR"
-_AND.50: "&" | "AND"
-_NOT.50: "-" | "!" | "~" | "NOT"
 
-CAT.50: ">^.^<"
-KOALA.50: "@( * O * )@"
-true.50: "TRUE" | "1" | CAT
-false.50: "FALSE" | "0" | KOALA
+_DEFINES.50: ":=" | "is" | "IS"
+_END.50: ";"
+
+true.50: "⊤" | "TRUE" | "1"
+false.50: "⊥" | "FALSE" | "0"
 
 literal: true | false
 // Assignment now uses the top-level expression rule
-assignment: name ":=" expression ";"
+assignment: name _DEFINES expression _END
 
 _infix{op, atom}: atom (op atom)+
 
@@ -35,14 +40,20 @@ _infix{op, atom}: atom (op atom)+
 // The entry-point for any expression starts at the lowest-priority expression
 // Each expression binds to its operator or a single instance of its subunit
 // and then is dropped by in-lining.
-?expression: equiv_expr
+?expression: ite_expr
+
+?ite_expr: (equiv_expr "?" equiv_expr ":" equiv_expr) -> decision
+    | equiv_expr
 
 // 2. Lowest Precedence: OR ("|")
 ?equiv_expr: _infix{_EQUIV, implies_expr} -> equivalence
-           | implies_expr
+    | implies_expr
 
-?implies_expr: _infix{_IMPLIES, or_expr} -> implication
-           | or_expr
+// ?implies_expr: _infix{_IMPLIES, or_expr} -> implication
+//     | or_expr
+
+?implies_expr: or_expr _IMPLIES or_expr -> implication
+     | or_expr
 
 // 2. Lowest Precedence: OR ("|")
 ?or_expr: _infix{_OR, xor_expr} -> disjunction
@@ -80,7 +91,7 @@ slice_step: INT
 slice: "[" slice_start? (":" slice_end? (":" slice_step)?)? "]"
 
 // Prefix operations are treated as a basic term
-_nary_prefix{op}: op "{" term term+ "}"
+_nary_prefix{op}: "[" op "]" "{" term term+ "}"
 ?prefix_operation: _nary_prefix{_AND} -> conjunction
                  | _nary_prefix{_OR} -> disjunction
                  | _nary_prefix{_XOR} -> parity

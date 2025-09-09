@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 from boolexpr.point import iter_points
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable, Iterator, Mapping
+    from collections.abc import Iterator, Mapping
     from typing import Self
 
     from boolexpr.expression.kind import Kind
@@ -22,7 +22,7 @@ __all__ = [
     "Disjoinable",
 ]
 
-type VarMap[Label: Hashable, Value] = Mapping[Variable[Label], Value]
+type VarMap[Value] = Mapping[Variable, Value]
 
 
 class Expression(Protocol):
@@ -53,9 +53,9 @@ class Expression(Protocol):
 
     def pushdown_not(self) -> Self: ...
 
-    def restrict[L: Hashable](self, point: Point[L]) -> Self: ...
+    def restrict(self, point: Point[Variable]) -> Self: ...
 
-    def compose[L: Hashable](self, expressions: VarMap[L, Self]) -> Self: ...
+    def compose(self, expressions: VarMap[Self]) -> Self: ...
 
     def to_cnf(self) -> Self: ...
 
@@ -63,7 +63,7 @@ class Expression(Protocol):
 
     def to_nnf(self) -> Self: ...
 
-    def iter_cofactors[L: Hashable](self, *variables: Variable[L]) -> Iterator[Self]:
+    def iter_cofactors(self, *variables: Variable) -> Iterator[Self]:
         for point in iter_points(variables):
             yield self.restrict(point)
 
