@@ -53,7 +53,7 @@ class Expression(Protocol):
 
     def pushdown_not(self) -> Self: ...
 
-    def restrict(self, point: Point[Variable]) -> Self: ...
+    def condition(self, point: Point[Variable]) -> Self: ...
 
     def compose(self, expressions: VarMap[Self]) -> Self: ...
 
@@ -65,7 +65,7 @@ class Expression(Protocol):
 
     def iter_cofactors(self, *variables: Variable) -> Iterator[Self]:
         for point in iter_points(variables):
-            yield self.restrict(point)
+            yield self.condition(point)
 
 
 class Invertable[Output: Expression](Protocol):

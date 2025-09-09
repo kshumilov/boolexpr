@@ -68,13 +68,14 @@ NODE_OP_TO_BUILDER = {
 
 NODE_LITERALS = frozenset({VAR, COMP})
 NODE_CONSTANTS = frozenset({ZERO, ONE})
+NODE_ATOMS = NODE_LITERALS | NODE_CONSTANTS
 NODE_OPS = frozenset({OP_NOT, OP_AND, OP_OR, OP_XOR, OP_EQ, OP_IMPL, OP_ITE})
 
 __all__ = [
     "get_operands",
     "get_support",
     "are_trivially_equivalent",
-    "restrict_by_point",
+    "condition",
     "point_to_term",
     "point_to_clause",
     "iter_cofactors",
@@ -86,7 +87,7 @@ __all__ = [
     "at_least",
     "less_than",
     "exactly",
-    "tseitin_constraints",
+    "tseitin_encoding",
     "NODE_KIND_TO_KIND",
     "NARY_TO_BUILDER",
     "NODE_OP_TO_BUILDER",
@@ -96,10 +97,7 @@ __all__ = [
 
 
 def get_operands(node: ExprNode) -> tuple[ExprNode, ...]:
-    if node.kind() in NODE_OP_TO_BUILDER:
-        # operands = node.data()
-        # assert isinstance(operands, tuple)
-        # assert all(isinstance(op, ExprNode) for op in operands)
+    if node.kind() in NODE_OPS:
         return cast("tuple[ExprNode, ...]", node.data())
     return ()
 
@@ -107,7 +105,7 @@ def get_operands(node: ExprNode) -> tuple[ExprNode, ...]:
 def get_support(node: ExprNode) -> dict[int, ExprNode]:
     input_lits: dict[int, ExprNode] = {}
     for child in node:
-        if child.kind() in (VAR, COMP):
+        if child.kind() in NODE_LITERALS:
             idx = child.data()
             assert isinstance(idx, int)
             input_lits[idx] = child
@@ -118,16 +116,16 @@ def are_trivially_equivalent(lhs: ExprNode, rhs: ExprNode) -> bool:
     if lhs.kind() != rhs.kind():
         return False
 
-    if lhs.kind() in (ZERO, ONE):
+    if lhs.kind() in NODE_CONSTANTS:
         return True
 
-    if lhs.kind() in (VAR, COMP):
+    if lhs.kind() in NODE_LITERALS:
         return lhs.data() == rhs.data()
 
     return lhs.id() == rhs.id()
 
 
-def restrict_by_point(node: ExprNode, point: Point[Variable]) -> ExprNode:
+def condition(node: ExprNode, point: Point[Variable]) -> ExprNode:
     return node.restrict({var.pos_lit: (One if polarity else Zero) for var, polarity in point.items()})
 
 
@@ -141,7 +139,7 @@ def point_to_clause(point: Point[Variable]) -> ExprNode:
 
 def iter_cofactors(node: ExprNode, *variables: Variable) -> Iterator[ExprNode]:
     for point in iter_points(variables):
-        yield restrict_by_point(node, point)
+        yield condition(node, point)
 
 
 def universal(node: ExprNode, *variables: Variable) -> ExprNode:
@@ -157,7 +155,7 @@ def derivative(node: ExprNode, *variables: Variable) -> ExprNode:
 
 
 def shannon(node: ExprNode, *variables: Variable) -> ExprNode:
-    return or_(*(and_(point_to_term(p), restrict_by_point(node, p)) for p in iter_points(variables)))
+    return or_(*(and_(point_to_term(p), condition(node, p)) for p in iter_points(variables)))
 
 
 def iter_point_lits(point: Point[Variable]) -> Iterator[ExprNode]:
@@ -205,10 +203,10 @@ def exactly(k: int, *nodes: ExprNode, as_cnf: bool = True) -> ExprNode:
     return and_(at_least(k, *nodes, as_cnf=as_cnf), less_than(k + 1, *nodes, as_cnf=as_cnf))
 
 
-def tseitin_constraints(
+def tseitin_encoding(
     node: ExprNode, get_new_var: Callable[[], ExprNode]
 ) -> tuple[ExprNode, list[tuple[ExprNode, ExprNode]]]:
-    if node.kind() in (ZERO, ONE, VAR, COMP):
+    if node.kind() in NODE_ATOMS:
         return node, []
 
     constraints = []
@@ -217,20 +215,17 @@ def tseitin_constraints(
 
     while stack:
         curr, visited = stack.pop()
-        if curr.id() in lit_for:
-            continue
 
-        if curr.kind() in (ZERO, ONE, VAR, COMP):
-            lit_for[curr.id()] = curr
-            continue
+        operands = cast("tuple[ExprNode,...]", curr.data())
 
         if not visited:
             stack.append((curr, True))
-            for child in reversed(cast("tuple[ExprNode,...]", curr.data())):
-                stack.append((child, False))
-        else:
+            stack.extend(
+                (operand, False) for operand in operands if operand.kind() in NODE_OPS and operand.id() not in lit_for
+            )
+        elif curr.id() not in lit_for:
             builder = cast("Callable[..., ExprNode]", NODE_OP_TO_BUILDER[curr.kind()])
-            constraint = builder(*(lit_for[c.id()] for c in cast("tuple[ExprNode, ...]", curr.data())))
+            constraint = builder(*(lit_for.get(c.id(), c) for c in operands))
 
             new_var = get_new_var()
             constraints.append((new_var, constraint))

@@ -12,13 +12,13 @@ from .interface import Conjoinable, Disjoinable, Expression, Invertable
 from .node import (
     NARY_TO_BUILDER,
     NODE_KIND_TO_KIND,
+    condition,
     derivative,
     existential,
     get_operands,
     get_support,
     point_to_clause,
     point_to_term,
-    restrict_by_point,
     shannon,
     universal,
 )
@@ -93,8 +93,8 @@ class SimpleExpression(
         node = self.node.pushdown_not()
         return self._new_if_different(node, simplify=simplify)
 
-    def restrict(self, point: Point[Variable], /, *, simplify: bool = True) -> Self:
-        node = restrict_by_point(self.node, point)
+    def condition(self, point: Point[Variable], /, *, simplify: bool = True) -> Self:
+        node = condition(self.node, point)
         return self._new_if_different(node, simplify=simplify)
 
     def compose(self, var_to_exr: VarMap[X], /, *, simplify: bool = True) -> Self:
