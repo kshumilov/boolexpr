@@ -45,6 +45,9 @@ class Variable:
     def __neg__(self) -> exprnode.ExprNode:
         return self.literals[0]
 
+    def __exprnode__(self) -> exprnode.ExprNode:
+        return self.literals[1]
+
     @property
     def pos_lit(self) -> exprnode.ExprNode:
         return self.literals[1]
