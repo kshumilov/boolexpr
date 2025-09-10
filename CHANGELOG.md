@@ -1,3 +1,9 @@
+## 0.3.3 (2025-09-10)
+
+### Fix
+
+- **src/boolexpr/variable/variable.py**: add __exprnode__ to Variable
+
 ## 0.3.2 (2025-09-10)
 
 ### Fix
