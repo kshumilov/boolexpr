@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
+from rich import tree
 
-from boolexpr.expression.simple import SimpleExpression
 from boolexpr.io.parser import get_expr_parser
-from boolexpr.io.visualization.expression import build_expression_forest, build_expression_tree
+from boolexpr.io.visualization.expression import Displayable, build_assignment_tree, build_expression_tree
 from boolexpr.variable.identifier import VariableIdentifier
 from boolexpr.variable.variable import Variable
 
@@ -14,10 +14,8 @@ if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Iterator
     from typing import Any
 
-    from rich import tree
-
-    from boolexpr import exprnode
-    from boolexpr.expression.simple import X
+    from boolexpr.expression.simple import SimpleExpression
+    from boolexpr.exprnode import ExprNode
     from boolexpr.io.parser import SimpleExpressionParser
     from boolexpr.variable.index import VariableIndex
 
@@ -66,10 +64,10 @@ class Universe:
     def get_next_var(self, prefix: str = "v") -> Variable:
         return self.var(prefix, len(self))
 
-    def node(self, prefix: str, *indices: int, polarity: bool = True) -> exprnode.ExprNode:
+    def node(self, prefix: str, *indices: int, polarity: bool = True) -> ExprNode:
         return self.var(prefix, *indices).to_node(polarity=polarity)
 
-    def get_next_node(self, prefix: str = "v", *, polarity: bool = True) -> exprnode.ExprNode:
+    def get_next_node(self, prefix: str = "v", *, polarity: bool = True) -> ExprNode:
         return self.get_next_var(prefix).to_node(polarity=polarity)
 
     def lit(self, prefix: str = "v", *indices: int, polarity: bool = True) -> SimpleExpression:
@@ -78,17 +76,25 @@ class Universe:
     def get_next_lit(self, prefix: str = "v", *, polarity: bool = True) -> SimpleExpression:
         return self.get_next_var(prefix).to_lit(polarity=polarity)
 
-    def show(self, expression: X, **kwargs: Any) -> tree.Tree:
-        return build_expression_tree(
-            SimpleExpression.extract_node(expression), idx_to_label=lambda idx: str(self[idx].label), **kwargs
-        )
+    def show(self, expression: Displayable, **kwargs: Any) -> tree.Tree:
+        return build_expression_tree(expression, parent=None, idx_to_label=self._get_var_label, **kwargs)
 
-    def show_forest(self, expressions: Iterable[tuple[X, X]], **kwargs: Any) -> tree.Tree:
-        expression_nodes = (
-            (SimpleExpression.extract_node(v), SimpleExpression.extract_node(e)) for v, e in expressions
-        )
+    def show_forest(
+        self, expressions: Iterable[tuple[ExprNode, Displayable]], /, title: str = "Forest", **kwargs: Any
+    ) -> tree.Tree:
+        parent = tree.Tree(title)
+        for variable, expression in expressions:
+            build_assignment_tree(
+                variable,
+                expression,
+                parent,
+                idx_to_label=self._get_var_label,
+                **kwargs,
+            )
+        return parent
 
-        return build_expression_forest(expression_nodes, idx_to_label=lambda idx: str(self[idx].label), **kwargs)
+    def _get_var_label(self, idx: VariableIndex) -> str:
+        return str(self[idx].label)
 
     def _assert_valid(self) -> None:
         assert self.idx_offset > 0

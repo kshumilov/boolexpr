@@ -17,9 +17,14 @@ if TYPE_CHECKING:
 __all__ = [
     "Expression",
     "VarMap",
+    "HasOperands",
+    "HasCompose",
     "Invertable",
     "Conjoinable",
     "Disjoinable",
+    "ConvertableToCNF",
+    "ConvertableToDNF",
+    "ConvertableToNNF",
 ]
 
 type VarMap[Value] = Mapping[Variable, Value]
@@ -31,9 +36,6 @@ class Expression(Protocol):
 
     @property
     def depth(self) -> int: ...
-
-    @property
-    def operands(self) -> tuple[Self, ...]: ...
 
     @property
     def support(self) -> frozenset[VariableIndex]: ...
@@ -55,26 +57,43 @@ class Expression(Protocol):
 
     def condition(self, point: Point[Variable]) -> Self: ...
 
-    def compose(self, expressions: VarMap[Self]) -> Self: ...
-
-    def to_cnf(self) -> Self: ...
-
-    def to_dnf(self) -> Self: ...
-
-    def to_nnf(self) -> Self: ...
-
     def iter_cofactors(self, *variables: Variable) -> Iterator[Self]:
         for point in iter_points(variables):
             yield self.condition(point)
+
+
+class HasOperands[Operand: Expression](Protocol):
+    @property
+    def operands(self) -> tuple[Operand, ...]: ...
+
+
+class HasCompose[Input: Expression](Protocol):
+    def compose(self, expressions: VarMap[Input]) -> Self: ...
 
 
 class Invertable[Output: Expression](Protocol):
     def __invert__(self) -> Output: ...
 
 
-class Conjoinable[LHS: Expression, Output: Expression](Protocol):
-    def __and__(self, other: LHS) -> Output: ...
+class Conjoinable[With: Expression, Result: Expression](Protocol):
+    def __and__(self, lhs: With) -> Result: ...
+
+    # def __rand__(self, rhs: With) -> Output: ...
 
 
-class Disjoinable[LHS: Expression, Output: Expression](Protocol):
-    def __or__(self, other: Self) -> Self: ...
+class Disjoinable[With: Expression, Result: Expression](Protocol):
+    def __or__(self, other: With) -> Result: ...
+
+    # def __ror__(self, rhs: With) -> Output: ...
+
+
+class ConvertableToCNF[Result: Expression](Protocol):
+    def to_cnf(self) -> Result: ...
+
+
+class ConvertableToDNF[Result: Expression](Protocol):
+    def to_dnf(self) -> Result: ...
+
+
+class ConvertableToNNF[Result: Expression](Protocol):
+    def to_nnf(self) -> Result: ...
