@@ -1,3 +1,14 @@
+## 0.3.0 (2025-09-10)
+
+### Feat
+
+- add atleast operator, refactor node, adjust visualization
+
+### Refactor
+
+- remove old boolfunc code
+- remove old parsing infrastructure
+
 ## 0.2.0 (2025-09-09)
 
 ### Feat
