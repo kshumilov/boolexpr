@@ -96,3 +96,8 @@ class AtLeastOp(
     def to_dnf(self, /, *, simplify: bool = True) -> SimpleExpression:
         node = expand(self.k, at_least, *self.xs, as_cnf=False)
         return SimpleExpression.from_node(node, simplify=simplify)
+
+    @classmethod
+    def from_expressions(cls, k: int, *operands: SimpleOrNode, simplify: bool = True) -> Self:
+        gate = cls(k, tuple(map(to_node, operands)))
+        return gate.simplify() if simplify else gate

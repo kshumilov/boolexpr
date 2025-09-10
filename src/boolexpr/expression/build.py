@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import partial
 
+from boolexpr.expression.cardinality import AtLeastOp
 from boolexpr.expression.kind import Kind
 from boolexpr.expression.simple import SimpleExpression
 
@@ -30,6 +31,7 @@ Equal = SimpleExpression.equivalence
 NotEqual = partial(SimpleExpression.negated_nary, Kind.Equivalence)
 Imply = SimpleExpression.implication
 ITE = SimpleExpression.decision
+AtLeast = AtLeastOp.from_expressions
 
 
 # def AtMostOne(*xs, simplify=True, conj=True):
