@@ -1,3 +1,9 @@
+## 0.3.1 (2025-09-10)
+
+### Fix
+
+- **src/boolexpr/expression**: add factory function for AtLeastOp
+
 ## 0.3.0 (2025-09-10)
 
 ### Feat
