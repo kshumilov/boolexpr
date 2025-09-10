@@ -1,3 +1,9 @@
+## 0.3.2 (2025-09-10)
+
+### Fix
+
+- add helper methods for ExprNode
+
 ## 0.3.1 (2025-09-10)
 
 ### Fix
