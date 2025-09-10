@@ -23,6 +23,7 @@ from .node.point import point_to_clause, point_to_term
 from .node.transform import condition, derivative, existential, shannon, universal
 from .node.utils import (
     NARY_TO_BUILDER,
+    NODE_ATOMS,
     NODE_KIND_TO_KIND,
     get_operands,
     get_support,
@@ -96,6 +97,8 @@ class SimpleExpression(
 
     @cached_property
     def operands(self) -> tuple[Self, ...]:
+        if self.node.kind() in NODE_ATOMS:
+            return ()
         return tuple(self.__class__(op) for op in get_operands(self.node))
 
     @cached_property

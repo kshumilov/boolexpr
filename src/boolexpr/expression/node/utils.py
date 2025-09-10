@@ -24,6 +24,7 @@ from boolexpr.exprnode import (
     or_,
     xor,
 )
+from boolexpr.variable.index import VariableIndex
 
 __all__ = [
     "NODE_KIND_TO_KIND",
@@ -35,11 +36,17 @@ __all__ = [
     "NODE_OPS",
     "get_operands",
     "get_support",
+    "get_identifier",
     "are_trivially_equivalent",
     "ConvertibleToExprNode",
     "to_node",
     "ExprOrNode",
 ]
+
+
+class ExprNodeBuilder(Protocol):
+    def __call__(self, *nodes: ExprNode) -> ExprNode: ...
+
 
 NODE_KIND_TO_KIND = {
     ZERO: Kind.Contradiction,
@@ -60,7 +67,7 @@ NARY_TO_BUILDER = {
     Kind.Parity: xor,
     Kind.Equivalence: eq,
 }
-NODE_OP_TO_BUILDER = {
+NODE_OP_TO_BUILDER: dict[int, ExprNodeBuilder] = {
     OP_NOT: not_,
     OP_AND: and_,
     OP_OR: or_,
@@ -75,10 +82,15 @@ NODE_ATOMS = NODE_LITERALS | NODE_CONSTANTS
 NODE_OPS = frozenset({OP_NOT, OP_AND, OP_OR, OP_XOR, OP_EQ, OP_IMPL, OP_ITE})
 
 
+def get_identifier(node: ExprNode) -> VariableIndex:
+    assert node.kind() in NODE_LITERALS
+    idx = abs(cast("int", node.data()))
+    return VariableIndex(idx)
+
+
 def get_operands(node: ExprNode) -> tuple[ExprNode, ...]:
-    if node.kind() in NODE_OPS:
-        return cast("tuple[ExprNode, ...]", node.data())
-    return ()
+    assert node.kind() in NODE_OPS
+    return cast("tuple[ExprNode, ...]", node.data())
 
 
 def get_support(*nodes: ExprNode) -> dict[int, ExprNode]:

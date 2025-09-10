@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections import Counter
 from itertools import combinations
 from math import comb
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol
 
 from boolexpr.exprnode import ONE, ZERO, ExprNode, One, Zero, and_, lit, not_, or_
 from boolexpr.point import iter_points
 
-from .utils import NODE_ATOMS
+from .utils import NODE_LITERALS, get_identifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -41,9 +41,8 @@ def iter_duplicate_input_variables(nodes: Iterable[ExprNode]) -> Iterator[ExprNo
     seen_operands = Counter[int]()
 
     for node in nodes:
-        if node.kind() in NODE_ATOMS:
-            idx = abs(cast("int", node.data()))
-            seen_operands[idx] += 1
+        if node.kind() in NODE_LITERALS:
+            seen_operands[get_identifier(node)] += 1
 
     yield from (lit(idx) for idx, count in seen_operands.items() if count > 1)
 

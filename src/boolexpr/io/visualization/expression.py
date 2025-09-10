@@ -1,18 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol
 
 from rich.tree import Tree
 
 from boolexpr.expression.cardinality import AtLeastOp
-from boolexpr.expression.node.utils import NODE_CONSTANTS, NODE_LITERALS, NODE_OPS, ExprOrNode, to_node
+from boolexpr.expression.node.utils import (
+    NODE_CONSTANTS,
+    NODE_LITERALS,
+    NODE_OPS,
+    ExprOrNode,
+    get_identifier,
+    get_operands,
+    to_node,
+)
 from boolexpr.exprnode import COMP, ONE, OP_AND, OP_EQ, OP_IMPL, OP_ITE, OP_NOT, OP_OR, OP_XOR, VAR, ZERO
-from boolexpr.variable.index import VariableIndex
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from boolexpr import exprnode
+    from boolexpr.variable.index import VariableIndex
 
 __all__ = [
     "build_node_tree",
@@ -68,8 +76,8 @@ def get_literal_node_label(
     node: exprnode.ExprNode, /, idx_to_label: Callable[[VariableIndex], str], *, not_char: str = "¬"
 ) -> str:
     assert node.kind() in NODE_LITERALS
-    var_idx = cast("int", node.data())
-    variable_label = idx_to_label(VariableIndex(abs(var_idx)))
+    var_idx = get_identifier(node)
+    variable_label = idx_to_label(var_idx)
     return variable_label if var_idx > 0 else f"{not_char}{variable_label}"
 
 
@@ -191,7 +199,7 @@ def build_op_node_tree(
     not_char: str = "¬",
 ) -> Tree:
     label = get_op_node_label(node)
-    operands = cast("Iterable[exprnode.ExprNode]", node.data())
+    operands: Iterable[exprnode.ExprNode] = get_operands(node)
 
     if node.size() < inline_size:
         label = get_infix_op_node_label(node, idx_to_label, not_char=not_char)

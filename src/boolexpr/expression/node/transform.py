@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from boolexpr.exprnode import ExprNode, One, Zero, and_, or_, xor
 from boolexpr.point import iter_points
 
 from .point import point_to_term
-from .utils import NODE_ATOMS, NODE_OP_TO_BUILDER, NODE_OPS
+from .utils import NODE_ATOMS, NODE_OP_TO_BUILDER, NODE_OPS, get_operands
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -62,7 +62,7 @@ def tseitin(node: ExprNode, get_new_var: Callable[[], ExprNode]) -> tuple[ExprNo
     while stack:
         curr, visited = stack.pop()
 
-        operands = cast("tuple[ExprNode,...]", curr.data())
+        operands = get_operands(curr)
 
         if not visited:
             stack.append((curr, True))
@@ -70,7 +70,7 @@ def tseitin(node: ExprNode, get_new_var: Callable[[], ExprNode]) -> tuple[ExprNo
                 (operand, False) for operand in operands if operand.kind() in NODE_OPS and operand.id() not in lit_for
             )
         elif curr.id() not in lit_for:
-            builder = cast("Callable[..., ExprNode]", NODE_OP_TO_BUILDER[curr.kind()])
+            builder = NODE_OP_TO_BUILDER[curr.kind()]
             constraint = builder(*(lit_for.get(c.id(), c) for c in operands))
 
             new_var = get_new_var()
