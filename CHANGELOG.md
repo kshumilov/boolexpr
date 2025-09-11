@@ -1,3 +1,9 @@
+## 0.3.7 (2025-09-11)
+
+### Fix
+
+- **src/boolexpr/expression**: fixed to_atom interface
+
 ## 0.3.6 (2025-09-10)
 
 ### Fix
