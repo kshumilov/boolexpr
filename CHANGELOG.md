@@ -1,3 +1,9 @@
+## 0.3.4 (2025-09-10)
+
+### Fix
+
+- **src/boolexpr/expression**: expose node_compose interface
+
 ## 0.3.3 (2025-09-10)
 
 ### Fix
