@@ -35,6 +35,28 @@ class Expression(Protocol):
     def kind(self) -> Kind: ...
 
     @property
+    def is_tautology(self) -> bool:
+        return self.kind == Kind.Tautology
+
+    @property
+    def is_contradiction(self) -> bool:
+        return self.kind == Kind.Contradiction
+
+    @property
+    def is_constant(self) -> bool:
+        return self.is_tautology or self.is_contradiction
+
+    @property
+    def is_variable(self) -> bool: ...
+
+    @property
+    def is_complement(self) -> bool: ...
+
+    @property
+    def is_literal(self) -> bool:
+        return self.is_variable or self.is_complement
+
+    @property
     def depth(self) -> int: ...
 
     @property
@@ -50,6 +72,8 @@ class Expression(Protocol):
     @property
     def cardinality(self) -> int:
         return 1 << self.degree
+
+    def to_atom(self) -> Expression: ...
 
     def simplify(self) -> Self: ...
 

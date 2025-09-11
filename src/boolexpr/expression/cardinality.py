@@ -44,6 +44,29 @@ class AtLeastOp(
     def kind(self) -> Kind:
         return Kind.Cardinality
 
+    @property
+    def is_tautology(self) -> bool:
+        return self.k <= 0 or (self.k <= sum(node.kind() == exprnode.One for node in self.nodes))
+
+    @property
+    def is_contradiction(self) -> bool:
+        return self.k > len(self.nodes) or (self.k <= sum(node.kind() == exprnode.Zero for node in self.nodes))
+
+    @property
+    def is_variable(self) -> bool:
+        return False
+
+    @property
+    def is_complement(self) -> bool:
+        return False
+
+    def to_atom(self) -> Expression:
+        if self.is_tautology:
+            return SimpleExpression(exprnode.One)
+        if self.is_contradiction:
+            return SimpleExpression(exprnode.Zero)
+        raise ValueError("Cannot convert non-constant expression to atom.")
+
     @cached_property
     def depth(self) -> int:
         return 1 + max(op.depth() for op in self.nodes)

@@ -25,6 +25,7 @@ from .node.utils import (
     NARY_TO_BUILDER,
     NODE_ATOMS,
     NODE_KIND_TO_KIND,
+    NODE_LITERALS,
     NodeMap,
     get_operands,
     get_support,
@@ -88,6 +89,23 @@ class SimpleExpression(
     @property
     def kind(self) -> Kind:
         return NODE_KIND_TO_KIND[self.node.kind()]
+
+    @property
+    def is_variable(self) -> bool:
+        return self.node.kind() == exprnode.VAR
+
+    @property
+    def is_complement(self) -> bool:
+        return self.node.kind() == exprnode.COMP
+
+    def to_atom(self) -> Self:
+        if self.node.kind() in NODE_LITERALS:
+            return self
+        if self.node.kind() == exprnode.ONE:
+            return self.__class__(exprnode.One)
+        if self.node.kind() == exprnode.Zero:
+            return self.__class__(exprnode.Zero)
+        raise ValueError("Cannot convert non-constant expression to atom.")
 
     @cached_property
     def depth(self) -> int:
