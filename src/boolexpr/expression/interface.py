@@ -57,6 +57,10 @@ class Expression(Protocol):
         return self.is_variable or self.is_complement
 
     @property
+    def is_atom(self) -> bool:
+        return self.is_constant or self.is_literal
+
+    @property
     def depth(self) -> int: ...
 
     @property

@@ -1,3 +1,9 @@
+## 0.3.5 (2025-09-10)
+
+### Fix
+
+- add to_atom converter to Expression interface
+
 ## 0.3.4 (2025-09-10)
 
 ### Fix
