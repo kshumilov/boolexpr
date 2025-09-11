@@ -8,7 +8,15 @@ import attrs
 from boolexpr import exprnode
 from boolexpr.variable.index import VariableIndex
 
-from .interface import ConvertableToCNF, ConvertableToDNF, Expression, HasCompose, HasOperands, VarMap
+from .interface import (
+    ConvertableToAtom,
+    ConvertableToCNF,
+    ConvertableToDNF,
+    Expression,
+    HasCompose,
+    HasOperands,
+    VarMap,
+)
 from .kind import Kind
 from .node.cardinality import at_least, at_least_size, expand, remove_constants
 from .node.transform import condition
@@ -31,6 +39,7 @@ class AtLeastOp(
     HasCompose[SimpleExpression],
     ConvertableToCNF[SimpleExpression],
     ConvertableToDNF[SimpleExpression],
+    ConvertableToAtom[SimpleExpression],
     Expression,
 ):
     k: int = attrs.field(converter=int)

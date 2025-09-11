@@ -10,6 +10,7 @@ from boolexpr.variable.index import VariableIndex
 
 from .interface import (
     Conjoinable,
+    ConvertableToAtom,
     ConvertableToCNF,
     ConvertableToDNF,
     ConvertableToNNF,
@@ -65,6 +66,7 @@ class SimpleExpression(
     ConvertableToCNF["SimpleExpression"],
     ConvertableToDNF["SimpleExpression"],
     ConvertableToNNF["SimpleExpression"],
+    ConvertableToAtom["SimpleExpression"],
     Expression,
 ):
     node: exprnode.ExprNode = attrs.field(

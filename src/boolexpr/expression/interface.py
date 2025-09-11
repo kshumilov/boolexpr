@@ -25,6 +25,7 @@ __all__ = [
     "ConvertableToCNF",
     "ConvertableToDNF",
     "ConvertableToNNF",
+    "ConvertableToAtom",
 ]
 
 type VarMap[Value] = Mapping[Variable, Value]
@@ -77,8 +78,6 @@ class Expression(Protocol):
     def cardinality(self) -> int:
         return 1 << self.degree
 
-    def to_atom(self) -> Expression: ...
-
     def simplify(self) -> Self: ...
 
     def pushdown_not(self) -> Self: ...
@@ -97,6 +96,10 @@ class HasOperands[Operand: Expression](Protocol):
 
 class HasCompose[Input: Expression](Protocol):
     def compose(self, mapping: VarMap[Input]) -> Self: ...
+
+
+class ConvertableToAtom[Output: Expression](Protocol):
+    def to_atom(self) -> Output: ...
 
 
 class Invertable[Output: Expression](Protocol):
