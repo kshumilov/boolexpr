@@ -12,7 +12,7 @@ from .interface import ConvertableToCNF, ConvertableToDNF, Expression, HasCompos
 from .kind import Kind
 from .node.cardinality import at_least, at_least_size, expand, remove_constants
 from .node.transform import condition
-from .node.utils import get_support, to_node
+from .node.utils import NodeMap, get_support, to_node, varmap_to_nodemap
 from .simple import SimpleExpression, SimpleOrNode
 
 __all__ = [
@@ -34,7 +34,7 @@ class AtLeastOp(
     Expression,
 ):
     k: int = attrs.field(converter=int)
-    xs: tuple[exprnode.ExprNode, ...] = attrs.field(
+    nodes: tuple[exprnode.ExprNode, ...] = attrs.field(
         validator=attrs.validators.deep_iterable(
             attrs.validators.instance_of(exprnode.ExprNode),
         ),
@@ -46,55 +46,58 @@ class AtLeastOp(
 
     @cached_property
     def depth(self) -> int:
-        return 1 + max(op.depth() for op in self.xs)
+        return 1 + max(op.depth() for op in self.nodes)
 
     @cached_property
     def size(self) -> int:
         return min(
-            at_least_size(len(self.xs), self.k, as_cnf=True),
-            at_least_size(len(self.xs), self.k, as_cnf=False),
+            at_least_size(len(self.nodes), self.k, as_cnf=True),
+            at_least_size(len(self.nodes), self.k, as_cnf=False),
         )
 
     @cached_property
     def support(self) -> frozenset[VariableIndex]:
-        return frozenset(VariableIndex(abs(idx)) for idx in get_support(*self.xs))
+        return frozenset(VariableIndex(abs(idx)) for idx in get_support(*self.nodes))
 
     @cached_property
     def operands(self) -> tuple[SimpleExpression, ...]:
-        return tuple(SimpleExpression(op) for op in self.xs)
+        return tuple(SimpleExpression(node) for node in self.nodes)
 
     def pushdown_not(self, /, *, simplify: bool = True) -> Self:
         if simplify:
-            operands = (op.pushdown_not().simplify() for op in self.xs)
+            operands = (node.pushdown_not().simplify() for node in self.nodes)
         else:
-            operands = (op.pushdown_not() for op in self.xs)
+            operands = (node.pushdown_not() for node in self.nodes)
         return self.__class__(self.k, tuple(operands))
 
-    def compose(self, expressions: VarMap[SimpleOrNode], /, *, simplify: bool = True) -> Self:
-        mapping = {v.pos_lit: to_node(e) for v, e in expressions.items()}
+    def compose(self, mapping: VarMap[SimpleOrNode], /, *, simplify: bool = True) -> Self:
+        node_map = varmap_to_nodemap(mapping)
+        return self.node_compose(node_map, simplify=simplify)
+
+    def node_compose(self, node_map: NodeMap, /, *, simplify: bool = True) -> Self:
         if simplify:
-            operands = (op.compose(mapping).simplify() for op in self.xs)
+            operands = (node.compose(node_map).simplify() for node in self.nodes)
         else:
-            operands = (op.compose(mapping) for op in self.xs)
+            operands = (node.compose(node_map) for node in self.nodes)
         return self.__class__(self.k, tuple(operands))
 
     def condition(self, point: Point[Variable], /, *, simplify: bool = True) -> Self:
         if simplify:
-            operands = (condition(op, point).simplify() for op in self.xs)
+            operands = (condition(node, point).simplify() for node in self.nodes)
         else:
-            operands = (condition(op, point) for op in self.xs)
+            operands = (condition(node, point) for node in self.nodes)
         return self.__class__(self.k, tuple(operands))
 
     def simplify(self) -> Self:
-        delta_k, new_xs = remove_constants(op.simplify() for op in self.xs)
+        delta_k, new_xs = remove_constants(node.simplify() for node in self.nodes)
         return self.__class__(self.k + delta_k, tuple(new_xs))
 
     def to_cnf(self, /, *, simplify: bool = True) -> SimpleExpression:
-        node = expand(self.k, at_least, *self.xs, as_cnf=True)
+        node = expand(self.k, at_least, *self.nodes, as_cnf=True)
         return SimpleExpression.from_node(node, simplify=simplify)
 
     def to_dnf(self, /, *, simplify: bool = True) -> SimpleExpression:
-        node = expand(self.k, at_least, *self.xs, as_cnf=False)
+        node = expand(self.k, at_least, *self.nodes, as_cnf=False)
         return SimpleExpression.from_node(node, simplify=simplify)
 
     @classmethod

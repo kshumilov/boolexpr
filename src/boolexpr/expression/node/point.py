@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from boolexpr.exprnode import ExprNode, and_, or_
+from boolexpr.exprnode import ExprNode, One, Zero, and_, or_
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from boolexpr.expression.node.utils import NodeMap
     from boolexpr.point import Point
     from boolexpr.variable.variable import Variable
 
 __all__ = [
     "point_to_term",
     "point_to_clause",
+    "point_to_nodemap",
     "iter_point_lits",
 ]
 
@@ -27,3 +29,7 @@ def point_to_clause(point: Point[Variable]) -> ExprNode:
 
 def iter_point_lits(point: Point[Variable]) -> Iterator[ExprNode]:
     yield from (+v if p else -v for v, p in point.items())
+
+
+def point_to_nodemap(point: Point[Variable]) -> NodeMap:
+    return {v.pos_lit: (One if p else Zero) for v, p in point.items()}

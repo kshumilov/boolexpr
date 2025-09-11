@@ -287,7 +287,7 @@ def build_expression_tree(
     not_char: str = "¬",
 ) -> Tree:
     match expression:
-        case AtLeastOp(k=k, xs=nodes):
+        case AtLeastOp(k=k, nodes=nodes):
             return build_at_least_tree(
                 k,
                 nodes,

@@ -68,7 +68,7 @@ class HasOperands[Operand: Expression](Protocol):
 
 
 class HasCompose[Input: Expression](Protocol):
-    def compose(self, expressions: VarMap[Input]) -> Self: ...
+    def compose(self, mapping: VarMap[Input]) -> Self: ...
 
 
 class Invertable[Output: Expression](Protocol):

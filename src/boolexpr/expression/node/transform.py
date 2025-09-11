@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from boolexpr.exprnode import ExprNode, One, Zero, and_, or_, xor
+from boolexpr.exprnode import ExprNode, and_, or_, xor
 from boolexpr.point import iter_points
 
-from .point import point_to_term
+from .point import point_to_nodemap, point_to_term
 from .utils import NODE_ATOMS, NODE_OP_TO_BUILDER, NODE_OPS, get_operands
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ __all__ = [
 
 
 def condition(node: ExprNode, point: Point[Variable]) -> ExprNode:
-    return node.restrict({var.pos_lit: (One if polarity else Zero) for var, polarity in point.items()})
+    return node.restrict(point_to_nodemap(point))
 
 
 def iter_cofactors(node: ExprNode, *variables: Variable) -> Iterator[ExprNode]:

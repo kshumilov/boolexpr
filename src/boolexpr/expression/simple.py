@@ -25,9 +25,11 @@ from .node.utils import (
     NARY_TO_BUILDER,
     NODE_ATOMS,
     NODE_KIND_TO_KIND,
+    NodeMap,
     get_operands,
     get_support,
     to_node,
+    varmap_to_nodemap,
 )
 
 if TYPE_CHECKING:
@@ -120,8 +122,12 @@ class SimpleExpression(
             node = node.simplify()
         return self._new_if_different(node)
 
-    def compose(self, var_to_exr: VarMap[SimpleOrNode], /, *, simplify: bool = True) -> Self:
-        node = self.node.compose({var.pos_lit: to_node(expr) for var, expr in var_to_exr.items()})
+    def compose(self, mapping: VarMap[SimpleOrNode], /, *, simplify: bool = True) -> Self:
+        node_map = varmap_to_nodemap(mapping)
+        return self.node_compose(node_map, simplify=simplify)
+
+    def node_compose(self, node_map: NodeMap, /, *, simplify: bool = True) -> Self:
+        node = self.node.compose(node_map)
         if simplify:
             node = node.simplify()
         return self._new_if_different(node)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 from boolexpr.expression.kind import Kind
 from boolexpr.exprnode import (
@@ -26,6 +26,9 @@ from boolexpr.exprnode import (
 )
 from boolexpr.variable.index import VariableIndex
 
+if TYPE_CHECKING:
+    from boolexpr.expression.interface import VarMap
+
 __all__ = [
     "NODE_KIND_TO_KIND",
     "NARY_TO_BUILDER",
@@ -40,8 +43,13 @@ __all__ = [
     "are_trivially_equivalent",
     "ConvertibleToExprNode",
     "to_node",
+    "varmap_to_nodemap",
+    "NodeMap",
     "ExprOrNode",
 ]
+
+
+type NodeMap = dict[ExprNode, ExprNode]
 
 
 class ExprNodeBuilder(Protocol):
@@ -128,3 +136,7 @@ def to_node(expression: ExprOrNode) -> ExprNode:
     if isinstance(expression, ExprNode):
         return expression
     return expression.__exprnode__()
+
+
+def varmap_to_nodemap(mapping: VarMap[ExprOrNode]) -> NodeMap:
+    return {v.pos_lit: to_node(e) for v, e in mapping.items()}
